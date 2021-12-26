@@ -1,25 +1,30 @@
 <template>
   <ProductList v-if="isProductList" />
-  <!-- <router-view /> -->
+  <AddProduct v-if="isAddProduct" />
+  
 </template>
 
 <script>
 
-// import HelloWorld from '../../components/HelloWorld.vue'
-import ProductList from '../../components/ProductList.vue'
-import "../../../node_modules/bootstrap/dist/css/bootstrap.css"
-import "../../../node_modules/bootstrap/dist/js/bootstrap.min.js"
-// import "../../api/db_conn.php"
+
+import ProductList from './components/ProductList.vue'
+import AddProduct from './components/AddProduct.vue'
+import "../node_modules/bootstrap/dist/css/bootstrap.min.css"
+import "../node_modules/bootstrap/dist/js/bootstrap.min.js"
+
 
 export default {
   name: 'App',
   components: {
-    // HelloWorld,
+    AddProduct,
     ProductList
   },
   computed: {
   isProductList() {
      return this.$route.name === 'Product List'
+  },
+  isAddProduct(){
+     return this.$route.name === 'Add Product'
   }
 }
 }

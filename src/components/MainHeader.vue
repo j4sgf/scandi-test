@@ -64,5 +64,11 @@
 <script>
 export default {
   name: "MainHeader",
+  methods: {
+    reloadPage() {
+      console.log(this.$route.name)
+      window.location.reload();
+    }
+  }
 };
 </script>
