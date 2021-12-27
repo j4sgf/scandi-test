@@ -152,6 +152,10 @@
             >
               Save
             </button>
+            
+          </div>
+          <div>
+  
           </div>
         </form>
       </div>
@@ -169,8 +173,14 @@ export default {
   data() {
     return {
       selected: "",
+      info: null
     };
   },
+  mounted () {
+    axios
+      .get('http://localhost:8888/src/api/connector.php')
+      .then(response => (this.info = response))
+  }
 };
 </script>
 

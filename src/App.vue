@@ -26,7 +26,8 @@ export default {
   isAddProduct(){
      return this.$route.name === 'Add Product'
   }
-}
+},
+
 }
 </script>
 
