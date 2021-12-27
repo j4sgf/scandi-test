@@ -9,7 +9,7 @@
 
 import ProductList from './components/ProductList.vue'
 import AddProduct from './components/AddProduct.vue'
-import "../node_modules/bootstrap/dist/css/bootstrap.min.css"
+import "../node_modules/bootstrap/dist/css/bootstrap.css"
 import "../node_modules/bootstrap/dist/js/bootstrap.min.js"
 
 
