@@ -1,6 +1,6 @@
 <?php
-header("Access-Control-Allow-Origin:*");
-header("Content-Type:application/json;charset=UTF-8");
+header("Access-Control-Allow-Origin: *"); // Allow
+header("Content-Type:application/json;charset=UTF-8/text/plain");
 header("Access-Control-Allow-Methods:POST,GET,PUT,DELETE");
 header("Access-Control-Max-Age:3600");
 header("Access-Control-Allow-Headers:Content-Type,Access-Control-Allow-Headers,Authorization,X-Requested-With");
@@ -14,15 +14,15 @@ include_once './product.php';
 $database = new database();
 $conn = $database->get_conn();
 $product_details = [($_POST['product_sku']), ($_POST['product_name']), ($_POST['product_price']), ($_POST['book_weight']), ($_POST['disc_size']), ($_POST['furniture_height']), ($_POST['furniture_width']), ($_POST['furniture_length'])];
+foreach ($product_details as $a){
+    echo $a;
+}
 $validators = [
     'disc_detail' => 'disc',
     'book_detail' => 'book',
     'furniture_detail' => 'furniture',
 ];
-$product_type = 'disc_detail';
-
-
-
+$product_type = $_POST['product_type'];
 
 
 //get request method from client 
@@ -31,7 +31,7 @@ $request = $_SERVER['REQUEST_METHOD'];
 //check request method client
 switch ($request) {
     case 'GET':
-        echo "wkwk";
+
 
         //code if the client request method GET
         $data = product_list::display_product();
@@ -41,6 +41,7 @@ switch ($request) {
         break;
 
     case 'POST':
+
 
         //code if the client request method is POST
         if (
@@ -53,7 +54,7 @@ switch ($request) {
                 isset($_POST['height']) ||
                 isset($_POST['book_weight'])
             )
-        ) {;
+        ) {
 
             if ($product =  new validators($product_type, $validators, $product_details)) {
 
@@ -81,7 +82,8 @@ switch ($request) {
 
             $result = array(
                 "status_code" => 400,
-                "status_massage" => "Unable to create product"
+                "status_massage" => "Unable to create product",
+                "product proce" => $_POST['product_price']
             );
             echo json_encode($result);
             echo ($_POST['product_price']);

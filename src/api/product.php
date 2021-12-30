@@ -112,10 +112,20 @@ class book extends product_list
 
   function insert_new_data()
   {
-    parent::insert_new_data();
-  }
-  public function validate_book()
-  {
+    $product_db = new database();
+    $conn = $product_db->get_conn();
+    $sql_product_insert = "INSERT INTO product (product_sku, product_name, product_price, book_weight) VALUES ('$this->product_sku', '$this->product_name', '$this->product_price', '$this->book_weight')";
+    if ($conn->connect_errno) {
+      echo "Failed to connect to MySQL: " . $conn->connect_error;
+      exit();
+    }
+    if ($conn->query($sql_product_insert) === TRUE) {
+      $id = $conn->insert_id;
+      echo "Insert to DB succes" . $sql_product_insert;
+    } else {
+      echo "Error2: " . $sql_product_insert . "<br>" . $conn->error;
+    }
+    $conn->close();
   }
 }
 
@@ -147,7 +157,20 @@ class disc extends product_list
   }
   function insert_new_data()
   {
-    parent::insert_new_data();
+    $product_db = new database();
+    $conn = $product_db->get_conn();
+    $sql_product_insert = "INSERT INTO product (product_sku, product_name, product_price, disc_size) VALUES ('$this->product_sku', '$this->product_name', '$this->product_price', '$this->disc_size')";
+    if ($conn->connect_errno) {
+      echo "Failed to connect to MySQL: " . $conn->connect_error;
+      exit();
+    }
+    if ($conn->query($sql_product_insert) === TRUE) {
+      $id = $conn->insert_id;
+      echo "Insert to DB succes" . $sql_product_insert;
+    } else {
+      echo "Error2: " . $sql_product_insert . "<br>" . $conn->error;
+    }
+    $conn->close();
   }
 }
 
@@ -190,7 +213,20 @@ class furniture extends product_list
 
   function insert_new_data()
   {
-    parent::insert_new_data();
+    $product_db = new database();
+    $conn = $product_db->get_conn();
+    $sql_product_insert = "INSERT INTO product (product_sku, product_name, product_price, furniture_height, furniture_width, furniture_length ) VALUES ('$this->product_sku', '$this->product_name', '$this->product_price', '$this->furniture_height', '$this->furniture_width', '$this->furniture_length')";
+    if ($conn->connect_errno) {
+      echo "Failed to connect to MySQL: " . $conn->connect_error;
+      exit();
+    }
+    if ($conn->query($sql_product_insert) === TRUE) {
+      $id = $conn->insert_id;
+      echo "Insert to DB succes" . $sql_product_insert;
+    } else {
+      echo "Error2: " . $sql_product_insert . "<br>" . $conn->error;
+    }
+    $conn->close();
   }
 }
 

@@ -4,8 +4,6 @@
     <div class="row g-3 justify-content-start m-1 justify-content-start">
       <div class="col-lg-4 shadow p-3 bg-body rounded p-4">
         <form
-          action="../handler/save_handler.php"
-          method="POST"
           id="product_form"
         >
           <div class="mb-3">
@@ -15,8 +13,10 @@
               class="form-control"
               id="sku"
               name="product_sku"
+              v-model="product.product_sku"
               required
             />
+            {{product.product_sku}}
           </div>
           <div class="mb-3">
             <label for="name" class="form-label d-flex">Name</label>
@@ -25,6 +25,7 @@
               class="form-control"
               id="name"
               name="product_name"
+              v-model="product.product_name"
               required
             />
           </div>
@@ -36,6 +37,7 @@
               class="form-control"
               id="price"
               name="product_price"
+              v-model="product.product_price"
               step="0.01"
               required
             />
@@ -43,11 +45,12 @@
           <div class="mb-3">
             <label for="productType" class="form-label d-flex">Type</label>
             <select
-              v-model="selected"
+              v-model="product.product_type"
               class="form-select"
               ref="productType"
               id="productType"
               name="productType"
+              
               required
             >
               <option value="" disabled selected>Select Product Type</option>
@@ -57,7 +60,7 @@
             </select>
           </div>
           <div
-            v-if="selected === 'disc_detail'"
+            v-if="product.product_type === 'disc_detail'"
             id="disc_detail"
             class="option-target"
           >
@@ -68,6 +71,7 @@
                 class="form-control field-target"
                 id="size"
                 name="disc_size"
+                v-model="product.disc_size"
                 aria-describedby="discHelpInline"
                 step="0.01"
                 required
@@ -79,7 +83,7 @@
             </div>
           </div>
           <div
-            v-if="selected === 'furniture_detail'"
+            v-if="product.product_type === 'furniture_detail'"
             id="furniture_detail"
             class="option-target"
           >
@@ -90,6 +94,7 @@
                 class="form-control field-target"
                 id="height"
                 name="height"
+                v-model="product.furniture_height"
                 required
               />
               <span class="input-group-text">cm</span>
@@ -101,6 +106,7 @@
                 class="form-control field-target"
                 id="width"
                 name="width"
+                v-model="product.furniture_width"
                 required
               />
               <span class="input-group-text">cm</span>
@@ -112,6 +118,7 @@
                 class="form-control field-target"
                 id="length"
                 name="length"
+                v-model="product.furniture_length"
                 aria-describedby="dimensionHelpInline"
                 required
               />
@@ -122,7 +129,7 @@
             </div>
           </div>
           <div
-            v-if="selected === 'book_detail'"
+            v-if="product.product_type === 'book_detail'"
             id="book_detail"
             class="option-target"
           >
@@ -133,6 +140,7 @@
                 class="form-control field-target"
                 id="weight"
                 name="weight"
+                v-model="product.book_weight"
                 aria-describedby="weightHelpInline"
                 step="0.01"
                 required
@@ -144,19 +152,16 @@
             </div>
           </div>
           <div>
-            <button
+            <button @click="saveProduct"
               class="btn btn-primary d-flex mt-5"
+              type="button"
               id="submit"
               aria-current="page"
-              href="view/_add_product.php"
             >
               Save
             </button>
-            
           </div>
-          <div>
-  
-          </div>
+          <div></div>
         </form>
       </div>
     </div>
@@ -164,6 +169,7 @@
 </template>
 
 <script>
+import DataService from "../services/DataServices";
 import MainHeader from "./MainHeader.vue";
 export default {
   name: "AddProduct",
@@ -173,14 +179,55 @@ export default {
   data() {
     return {
       selected: "",
-      info: null
+      product: {
+        product_type:"",
+        product_sku: "",
+        product_name: "",
+        product_price: "",
+        book_weight: "",
+        disc_size: "",
+        furniture_height: "",
+        furniture_width: "",
+        furniture_length: "",
+      },
+      submitted: false,
     };
   },
-  mounted () {
-    axios
-      .get('http://localhost:8888/src/api/connector.php')
-      .then(response => (this.info = response))
-  }
+  methods: {
+    saveProduct() {
+      var data = {
+        product_type: this.product.product_type,
+        product_sku: this.product.product_sku,
+        product_name: this.product.product_name,
+        product_price: this.product.product_price,
+        book_weight: this.product.book_weight,
+        disc_size: this.product.disc_size,
+        furniture_height: this.product.furniture_height,
+        furniture_width: this.product.furniture_width,
+        furniture_length: this.product.furniture_length,
+        
+      };
+      
+      DataService.create(data)
+      .then(response => {
+          this.product.product_sku = response.data.product_sku;
+          console.log(response.data);
+          this.submitted = true;
+          
+        })
+        .catch(e => {
+          
+          console.log(e);
+        }).then( this.$router.push('/'))
+        
+    },
+    
+    newProduct() {
+      this.submitted = false;
+      this.tutorial = {};
+    },
+    
+  },
 };
 </script>
 
