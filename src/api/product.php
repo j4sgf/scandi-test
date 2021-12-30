@@ -121,7 +121,7 @@ class book extends product_list
     }
     if ($conn->query($sql_product_insert) === TRUE) {
       $id = $conn->insert_id;
-      echo "Insert to DB succes" . $sql_product_insert;
+    //   echo "Insert to DB succes" . $sql_product_insert;
     } else {
       echo "Error2: " . $sql_product_insert . "<br>" . $conn->error;
     }
@@ -166,7 +166,7 @@ class disc extends product_list
     }
     if ($conn->query($sql_product_insert) === TRUE) {
       $id = $conn->insert_id;
-      echo "Insert to DB succes" . $sql_product_insert;
+    //   echo "Insert to DB succes" . $sql_product_insert;
     } else {
       echo "Error2: " . $sql_product_insert . "<br>" . $conn->error;
     }
@@ -222,7 +222,7 @@ class furniture extends product_list
     }
     if ($conn->query($sql_product_insert) === TRUE) {
       $id = $conn->insert_id;
-      echo "Insert to DB succes" . $sql_product_insert;
+    //   echo "Insert to DB succes" . $sql_product_insert;
     } else {
       echo "Error2: " . $sql_product_insert . "<br>" . $conn->error;
     }

@@ -171,6 +171,7 @@
 <script>
 import DataService from "../services/DataServices";
 import MainHeader from "./MainHeader.vue";
+import qs from 'qs';
 export default {
   name: "AddProduct",
   components: {
@@ -195,7 +196,7 @@ export default {
   },
   methods: {
     saveProduct() {
-      var data = {
+      var data = qs.stringify( {
         product_type: this.product.product_type,
         product_sku: this.product.product_sku,
         product_name: this.product.product_name,
@@ -206,7 +207,7 @@ export default {
         furniture_width: this.product.furniture_width,
         furniture_length: this.product.furniture_length,
         
-      };
+      });
       
       DataService.create(data)
       .then(response => {
@@ -232,7 +233,5 @@ export default {
 </script>
 
 <style scoped>
-label {
-  justify-content: start;
-}
+
 </style>
