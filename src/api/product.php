@@ -62,14 +62,14 @@ abstract class product_list
     $conn->close();
   }
 
-  public function product_delete($data_id){
+  public static function product_delete($data_id){
     $id = [];
     $db = new database();
     $id = $data_id;
     $conn = $db->get_conn();
     foreach ($id as $product_id){
         
-        $sql_delete = "DELETE FROM product_list WHERE product_list.product_id = $product_id";
+        $sql_delete = "DELETE FROM product WHERE product.product_id = $product_id";
     
         if ($conn->query($sql_delete) === TRUE){
     

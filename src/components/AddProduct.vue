@@ -1,5 +1,5 @@
 <template>
-  <MainHeader />
+  <MainHeader  />
   <div class="container overflow-hidden display-flex">
     <div class="row g-3 justify-content-start m-1 justify-content-start">
       <div class="col-lg-4 shadow p-3 bg-body rounded p-4">
@@ -177,6 +177,7 @@ export default {
   components: {
     MainHeader,
   },
+  emits: ['delete-product'],
   data() {
     return {
       selected: "",

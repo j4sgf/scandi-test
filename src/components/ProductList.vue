@@ -1,24 +1,123 @@
 <template>
- <MainHeader />
-<div class="container overflow-hidden">
-    <div class="row  justify-content-start align-items-start m-1 ">
-        <div class="col-md-12 shadow mb-5 bg-body rounded p-4" style="min-height: 250px;">
-           
+  <MainHeader @delete-product="removeAllProducts" />
+  <div class="container overflow-hidden">
+    <div class="row justify-content-start align-items-start m-1">
+      <div
+        class="col-md-12 shadow mb-5 bg-body rounded p-4"
+        style="min-height: 250px"
+      >
+        <div
+          class="
+            row
+            justify-content-start
+            row-cols-2 row-cols-sm-2 row-cols-md-3 row-cols-lg-4
+            align-items-start'
+            id='allProducts'
+          "
+        >
+          <div v-for="value in products" v-bind:key="value[0]">
+            <div class="container-lg overflow-auto">
+              <div
+                class="
+                  col-12
+                  shadow
+                  mb-5
+                  bg-body
+                  rounded
+                  p-4
+                  overflow-auto
+                  justify-content-center
+                  align-item-center
+                "
+                style="min-height: 260px"
+              >
+                <div class="form-check d-flex justify-content-start">
+                  <input
+                    v-model="deleteCheckbox"
+                    class="form-check-input delete-checkbox mb-3"
+                    name="displayboxcheck"
+                    id="delete-checkbox"
+                    type="checkbox"
+                    :value="value[0]"
+                    @change="selectProduct"
+                  />
+                </div>
+                <div class="text-center justify-content-center">
+                  <p class="product_details" v-if="value[1]">{{ value[1] }}</p>
+                  <p class="product_details" v-if="value[2]">{{ value[2] }}</p>
+                  <p class="product_details" v-if="value[3]">
+                    {{ value[3] }} $
+                  </p>
+                  <p v-if="value[4]">{{ value[4] }} KG</p>
+                  <p v-if="value[5]">{{ value[5] }} MB</p>
+                  <p v-if="value[6]">
+                    Dimension: {{ value[6] }}x{{ value[7] }}x{{ value[8] }}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
     </div>
-
-</div>
-
+  </div>
 </template>
 
 <script>
-import MainHeader from './MainHeader.vue'
-export default {
-    name : 'ProductList',
-     components: {
-    // HelloWorld,
-    MainHeader,
+import DataService from "../services/DataServices";
+import MainHeader from "./MainHeader.vue";
 
+
+export default {
+  name: "ProductList",
+  components: {
+    MainHeader,
   },
-}
+  emits: ['delete-product'],
+  data() {
+    return {
+      deleteCheckbox: [],
+      products: [],
+    };
+  },
+  methods: {
+    retrieveProduct() {
+      DataService.getAll()
+        .then((response) => {
+          this.products = response.data;
+          console.log(response.data);
+        })
+        .catch((e) => {
+          console.log(e);
+        });
+    },
+
+    refreshList() {
+      this.retrieveProduct();
+    },
+
+    removeAllProducts() {
+      var id = (this.deleteCheckbox);
+      console.log(id);
+      DataService.deleteAll(id)
+        .then((response) => {
+          console.log(response.data);
+          this.refreshList();
+        })
+        .catch((e) => {
+          console.log(e);
+        });
+    },
+  },
+  mounted() {
+    this.retrieveProduct();
+  },
+};
 </script>
+
+<style scoped>
+.product_details {
+  text-align: center;
+  font-weight: bold;
+}
+</style>

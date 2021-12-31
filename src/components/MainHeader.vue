@@ -45,6 +45,7 @@
                     class="btn btn-danger"
                     aria-current="page"
                     id="delete-product-btn"
+                    @click="deleteProduct()"
                   >
                     MASS DELETE
                   </button>
@@ -110,6 +111,9 @@ export default {
     reloadPage() {
       console.log(this.$route.name)
       window.location.reload();
+    },
+    deleteProduct(){
+      this.$emit('delete-product')
     }
   },
   computed: {

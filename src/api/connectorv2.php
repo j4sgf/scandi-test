@@ -58,8 +58,11 @@ class connector
         
                 //code if the client request method GET
                 $data = product_list::display_product();
-                $row = mysqli_fetch_row($data);
-                return $row;
+                while ($row = mysqli_fetch_row($data)){
+                $result[]= $row;
+                }
+                echo json_encode ($result);
+                return $result;
         
                 break;
         

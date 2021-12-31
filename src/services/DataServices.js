@@ -2,7 +2,7 @@ import http from "../http-common";
 
 class DataService {
   getAll() {
-    return http.get("/connector");
+    return http.get("/connector.php");
   }
 
   create(data) {
@@ -10,13 +10,8 @@ class DataService {
     
   }
 
-
-  delete(id) {
-    return http.delete(`/connector/${id}`);
-  }
-
-  deleteAll() {
-    return http.delete(`/connector`);
+  deleteAll(id) {
+    return http.delete("/connector.php", id);
   }
 
 }

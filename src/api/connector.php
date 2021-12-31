@@ -14,7 +14,7 @@ include_once './product.php';
 $database = new database();
 $conn = $database->get_conn();
 $product_details = [($_POST['product_sku']), ($_POST['product_name']), ($_POST['product_price']), ($_POST['book_weight']), ($_POST['disc_size']), ($_POST['furniture_height']), ($_POST['furniture_width']), ($_POST['furniture_length'])];
-foreach ($product_details as $a){
+foreach ($product_details as $a) {
     echo $a;
 }
 $validators = [
@@ -35,8 +35,11 @@ switch ($request) {
 
         //code if the client request method GET
         $data = product_list::display_product();
-        $row = mysqli_fetch_row($data);
-        return $row;
+        while ($row = mysqli_fetch_row($data)) {
+            $result[] = $row;
+        }
+
+        return $result;
 
         break;
 
@@ -93,7 +96,7 @@ switch ($request) {
 
     case 'DELETE':
         //code if the client request method is DELETE
-        product_list::display_product($data_id);
+        product_list::product_delete($_POST);
 
 
         break;
