@@ -45,16 +45,12 @@
                     class="btn btn-danger"
                     aria-current="page"
                     id="delete-product-btn"
-                    @click="deleteProduct()"
+                    @click="deleteAll()"
                   >
                     MASS DELETE
                   </button>
                 </li>
                 <li class="nav-item mt-1 d-flex justify-content-end me-2">
-                  <div>
-                    <input type="checkbox" name="select-all" id="select-all" />
-                    Select All
-                  </div>
                 </li>
               </div>
             </div>
@@ -112,9 +108,9 @@ export default {
       console.log(this.$route.name)
       window.location.reload();
     },
-    deleteProduct(){
+    deleteAll(){
       this.$emit('delete-product')
-    }
+    },
   },
   computed: {
   isProductList() {

@@ -11,7 +11,8 @@ class DataService {
   }
 
   deleteAll(id) {
-    return http.delete("/connector.php", id);
+
+    return http.post("/connector.php", id);
   }
 
 }

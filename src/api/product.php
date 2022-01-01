@@ -63,13 +63,15 @@ abstract class product_list
   }
 
   public static function product_delete($data_id){
-    $id = [];
+
     $db = new database();
-    $id = $data_id;
+    
     $conn = $db->get_conn();
-    foreach ($id as $product_id){
+    
+    foreach ($data_id as $id){
+      echo "wkwk". $id;
         
-        $sql_delete = "DELETE FROM product WHERE product.product_id = $product_id";
+        $sql_delete = "DELETE FROM product WHERE product.product_id = $id";
     
         if ($conn->query($sql_delete) === TRUE){
     
@@ -123,7 +125,7 @@ class book extends product_list
       $id = $conn->insert_id;
     //   echo "Insert to DB succes" . $sql_product_insert;
     } else {
-      echo "Error2: " . $sql_product_insert . "<br>" . $conn->error;
+      echo "Error2: " . "<br>" . $conn->error;
     }
     $conn->close();
   }
@@ -168,7 +170,7 @@ class disc extends product_list
       $id = $conn->insert_id;
     //   echo "Insert to DB succes" . $sql_product_insert;
     } else {
-      echo "Error2: " . $sql_product_insert . "<br>" . $conn->error;
+      echo "Error2: " . "<br>" . $conn->error;
     }
     $conn->close();
   }
@@ -224,7 +226,7 @@ class furniture extends product_list
       $id = $conn->insert_id;
     //   echo "Insert to DB succes" . $sql_product_insert;
     } else {
-      echo "Error2: " . $sql_product_insert . "<br>" . $conn->error;
+      echo "Error2: " . "<br>" . $conn->error;
     }
     $conn->close();
   }

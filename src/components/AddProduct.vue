@@ -171,11 +171,13 @@
 <script>
 import DataService from "../services/DataServices";
 import MainHeader from "./MainHeader.vue";
+
 import qs from 'qs';
 export default {
   name: "AddProduct",
   components: {
     MainHeader,
+
   },
   emits: ['delete-product'],
   data() {

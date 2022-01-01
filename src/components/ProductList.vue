@@ -1,5 +1,5 @@
 <template>
-  <MainHeader @delete-product="removeAllProducts" />
+  <MainHeader @delete-product="saveProductId" />
   <div class="container overflow-hidden">
     <div class="row justify-content-start align-items-start m-1">
       <div
@@ -10,7 +10,7 @@
           class="
             row
             justify-content-start
-            row-cols-2 row-cols-sm-2 row-cols-md-3 row-cols-lg-4
+            row-cols-2 row-cols-sm-2 row-cols-md-2 row-cols-lg-3 row-cols-xl-3 row-cols-xxl-4
             align-items-start'
             id='allProducts'
           "
@@ -39,7 +39,6 @@
                     id="delete-checkbox"
                     type="checkbox"
                     :value="value[0]"
-                    @change="selectProduct"
                   />
                 </div>
                 <div class="text-center justify-content-center">
@@ -66,53 +65,61 @@
 <script>
 import DataService from "../services/DataServices";
 import MainHeader from "./MainHeader.vue";
-
+import qs from 'qs';
 
 export default {
   name: "ProductList",
   components: {
     MainHeader,
   },
-  emits: ['delete-product'],
+  emits: ['delete-Product'],
   data() {
     return {
       deleteCheckbox: [],
       products: [],
+      product: {
+        product_id:"",
+      },
     };
   },
   methods: {
-    retrieveProduct() {
-      DataService.getAll()
-        .then((response) => {
-          this.products = response.data;
-          console.log(response.data);
-        })
-        .catch((e) => {
-          console.log(e);
-        });
-    },
-
-    refreshList() {
-      this.retrieveProduct();
-    },
-
-    removeAllProducts() {
-      var id = (this.deleteCheckbox);
-      console.log(id);
+    saveProductId(){
+      var id = qs.stringify({ 
+        product_id:this.deleteCheckbox
+      });
       DataService.deleteAll(id)
-        .then((response) => {
-          console.log(response.data);
+        .then(() => {
           this.refreshList();
         })
         .catch((e) => {
           console.log(e);
         });
     },
+    
+    retrieveProduct() {
+      DataService.getAll()
+        .then((response) => {
+          this.products = response.data;
+          // console.log(response.data);
+        })
+        .catch((e) => {
+          console.log(e);
+        });
+    },
+
+
+    refreshList() {
+      this.retrieveProduct();
+    },
+
+    
   },
   mounted() {
+
     this.retrieveProduct();
-  },
-};
+  }
+}
+
 </script>
 
 <style scoped>
