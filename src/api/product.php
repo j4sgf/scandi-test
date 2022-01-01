@@ -63,10 +63,10 @@ abstract class product_list
   }
 
   public function product_delete($data_id){
-    echo "wlwl" . $data_id;
     $db = new database();
     $conn = $db->get_conn();
     foreach ($data_id as $id){
+        echo $id;
         
         $sql_delete = "DELETE FROM product WHERE product.product_id = $id";
     

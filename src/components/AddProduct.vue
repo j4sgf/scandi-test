@@ -221,7 +221,7 @@ export default {
         .catch(e => {
           
           console.log(e);
-        }).then( this.$router.push('/'))
+        }).then(this.$router.push('/'))
         
     },
     

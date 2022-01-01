@@ -39,6 +39,7 @@
                     id="delete-checkbox"
                     type="checkbox"
                     :value="value[0]"
+
                   />
                 </div>
                 <div class="text-center justify-content-center">
@@ -87,6 +88,7 @@ export default {
       var id = qs.stringify({ 
         product_id:this.deleteCheckbox
       });
+      
       DataService.deleteAll(id)
         .then(() => {
           this.refreshList();
@@ -100,12 +102,13 @@ export default {
       DataService.getAll()
         .then((response) => {
           this.products = response.data;
-          // console.log(response.data);
+          console.log(response.data);
         })
         .catch((e) => {
           console.log(e);
         });
     },
+
 
 
     refreshList() {
@@ -115,7 +118,6 @@ export default {
     
   },
   mounted() {
-
     this.retrieveProduct();
   }
 }

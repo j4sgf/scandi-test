@@ -19,10 +19,11 @@ class connector
     public $furniture_height;
     public $furniture_width;
     public $furniture_length;
+    public $result;
 
     public function __construct()
     {
-        
+        $this->product_id = isset($_POST['product_id']);
         $this->product_sku = isset($_POST['product_sku']) ? $_POST['product_sku'] : '';
         $this->product_name = isset($_POST['product_name']) ? $_POST['product_name'] : '';
         $this->product_price = isset($_POST['product_price']) ? $_POST['product_price'] : '';
@@ -56,22 +57,31 @@ class connector
 
         switch ($this->request) {
             case 'GET':
-        
+                
+                $db = new database();
+                 $conn = $db->get_conn();
         
                 //code if the client request method GET
-                $data = product_list::display_product();
-                while ($row = mysqli_fetch_row($data)){
+                $d = product_list::display_product();
+                while ($row = mysqli_fetch_row($d)){
                 $result[]= $row;
                 }
-                echo json_encode ($result);
+                if (isset($result)){
+                echo json_encode($result);
                 return json_encode($result);
+                }
+                else{
+                    echo NULL;
+                    return NULL;
+                }
         
                 break;
         
             case 'POST':
-                if (isset($this->product_id)){
+        
+                if (isset($_POST['product_id'])){
                     
-                    product_list::product_delete($this->product_id);
+                    product_list::product_delete($_POST['product_id']);
 
                 }
         
@@ -122,6 +132,7 @@ class connector
                 }
         
                 break;
+
         
             default:
                 //code if the client request is not GET ,POST ,PUT ,DELETE 
