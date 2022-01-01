@@ -62,14 +62,11 @@ abstract class product_list
     $conn->close();
   }
 
-  public static function product_delete($data_id){
-
+  public function product_delete($data_id){
+    echo "wlwl" . $data_id;
     $db = new database();
-    
     $conn = $db->get_conn();
-    
     foreach ($data_id as $id){
-      echo "wkwk". $id;
         
         $sql_delete = "DELETE FROM product WHERE product.product_id = $id";
     
@@ -125,7 +122,7 @@ class book extends product_list
       $id = $conn->insert_id;
     //   echo "Insert to DB succes" . $sql_product_insert;
     } else {
-      echo "Error2: " . "<br>" . $conn->error;
+      echo "Error2: " . $sql_product_insert . "<br>" . $conn->error;
     }
     $conn->close();
   }
@@ -170,7 +167,7 @@ class disc extends product_list
       $id = $conn->insert_id;
     //   echo "Insert to DB succes" . $sql_product_insert;
     } else {
-      echo "Error2: " . "<br>" . $conn->error;
+      echo "Error2: " . $sql_product_insert . "<br>" . $conn->error;
     }
     $conn->close();
   }
@@ -226,7 +223,7 @@ class furniture extends product_list
       $id = $conn->insert_id;
     //   echo "Insert to DB succes" . $sql_product_insert;
     } else {
-      echo "Error2: " . "<br>" . $conn->error;
+      echo "Error2: " . $sql_product_insert . "<br>" . $conn->error;
     }
     $conn->close();
   }

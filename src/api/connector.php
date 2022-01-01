@@ -22,7 +22,7 @@ class connector
 
     public function __construct()
     {
-        $this->product_id = isset($_POST['product_id']) ? $_POST['product_id'] : '';
+        
         $this->product_sku = isset($_POST['product_sku']) ? $_POST['product_sku'] : '';
         $this->product_name = isset($_POST['product_name']) ? $_POST['product_name'] : '';
         $this->product_price = isset($_POST['product_price']) ? $_POST['product_price'] : '';
@@ -70,6 +70,7 @@ class connector
         
             case 'POST':
                 if (isset($this->product_id)){
+                    
                     product_list::product_delete($this->product_id);
 
                 }
@@ -121,25 +122,6 @@ class connector
                 }
         
                 break;
-        
-            // case 'DELETE':
-            //     //code if the client request method is DELETE
-            //     $dd[] = json_decode(file_get_contents('php://input'));
-
-            //     $no_equal = str_replace("=", "", file_get_contents('php://input'));
-            //     $id_arr[] = str_replace("&", ",", $no_equal);
-            //     foreach ($dd as $d){
-            //         echo "wlwl" . $d;
-            //     }
-
-            //     // product_list::product_delete(str_replace("=", "", file_get_contents('php://input')));
-               
-
-
-
-        
-        
-            //     break;
         
             default:
                 //code if the client request is not GET ,POST ,PUT ,DELETE 
