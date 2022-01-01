@@ -16,7 +16,6 @@
               v-model="product.product_sku"
               required
             />
-            {{product.product_sku}}
           </div>
           <div class="mb-3">
             <label for="name" class="form-label d-flex">Name</label>
