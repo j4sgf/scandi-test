@@ -6,6 +6,10 @@
         class="col-md-12 shadow mb-5 bg-body rounded p-4"
         style="min-height: 250px"
       >
+      <div class="form-check d-flex justify-content-center mt-auto mb-3 ">
+          <input type="checkbox" class="form-check-input me-2" id="select-all" @click="selectAll" v-model="allSelected">
+          <label for="select-all" class="form-label d-flex">Select All</label>
+        </div>
         <div
           class="
             row
@@ -15,6 +19,7 @@
             id='allProducts'
           "
         >
+        
           <div v-for="value in products" v-bind:key="value[0]">
             <div class="container-lg overflow-auto">
               <div
@@ -39,6 +44,7 @@
                     id="delete-checkbox"
                     type="checkbox"
                     :value="value[0]"
+                    @change="updateCheckall"
 
                   />
                 </div>
@@ -78,6 +84,8 @@ export default {
     return {
       deleteCheckbox: [],
       products: [],
+      selected: [],
+        allSelected: false,
       product: {
         product_id:"",
       },
@@ -114,6 +122,44 @@ export default {
     refreshList() {
       this.retrieveProduct();
     },
+
+    selectAll() {
+      this.deleteCheckbox = [];
+            this.selected = [];
+            if (!this.allSelected) {
+              
+                for (let i in this.products) {
+                    this.selected.push(this.products[i]);
+                      this.deleteCheckbox.push(this.selected[i][0])
+                }
+                console.log("2: " + this.deleteCheckbox);
+
+            }
+        },
+
+        updateCheckall: function(){
+              if(this.products.length == this.deleteCheckbox.length){
+                 this.allSelected = true;
+              }else{
+                 this.allSelected = false;
+              }
+        }
+    
+
+    // selectAll() {
+    //     console.log(this.allSelected);
+    //     console.log(this.deleteCheckbox);
+
+    //         // if (!this.allSelected) {
+    //         //     for (product in this.deleteCheckbox){
+    //         //       this.deleteCheckbox = true
+    //         //     }
+                
+    //         // }
+    //         // else{
+    //         //   this.deleteCheckbox = [];
+    //         // }
+    //     },
 
     
   },
