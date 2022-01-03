@@ -1,4 +1,5 @@
 <template>
+
   <div v-if="isProductList" class="container overflow-hidden sticky-top">
     <div class="row justify-content-start m-1">
       <div class="col-lg-12 shadow p-0 mb-0 bg-body rounded p-0">

@@ -104,6 +104,7 @@ export default {
         .catch((e) => {
           console.log(e);
         });
+        
     },
     
     retrieveProduct() {
@@ -121,6 +122,7 @@ export default {
 
     refreshList() {
       this.retrieveProduct();
+      this.updateCheckall();
     },
 
     selectAll() {
