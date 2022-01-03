@@ -132,7 +132,6 @@ export default {
                     this.selected.push(this.products[i]);
                       this.deleteCheckbox.push(this.selected[i][0])
                 }
-                console.log("2: " + this.deleteCheckbox);
 
             }
         },
@@ -144,24 +143,7 @@ export default {
                  this.allSelected = false;
               }
         }
-    
 
-    // selectAll() {
-    //     console.log(this.allSelected);
-    //     console.log(this.deleteCheckbox);
-
-    //         // if (!this.allSelected) {
-    //         //     for (product in this.deleteCheckbox){
-    //         //       this.deleteCheckbox = true
-    //         //     }
-                
-    //         // }
-    //         // else{
-    //         //   this.deleteCheckbox = [];
-    //         // }
-    //     },
-
-    
   },
   mounted() {
     this.retrieveProduct();
