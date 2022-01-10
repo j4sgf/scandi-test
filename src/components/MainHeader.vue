@@ -110,14 +110,17 @@ export default {
       window.location.reload();
     },
     deleteAll(){
+      //emmit delete-product-button to Product List Component
       this.$emit('delete-product')
     },
   },
   computed: {
   isProductList() {
+    //check if on product list page
      return this.$route.name === 'Product List'
   },
   isAddProduct(){
+    //check if on add product page
      return this.$route.name === 'Add Product'
   }
 }

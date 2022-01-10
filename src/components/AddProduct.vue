@@ -198,6 +198,7 @@ export default {
   },
   methods: {
     saveProduct() {
+      //Post data to API to be saved on DB
       var data = qs.stringify( {
         product_type: this.product.product_type,
         product_sku: this.product.product_sku,
@@ -214,7 +215,7 @@ export default {
       DataService.create(data)
       .then(response => {
           this.product.product_sku = response.data.product_sku;
-          console.log(response.data);
+          // console.log(response.data);
           this.submitted = true;
           
         })

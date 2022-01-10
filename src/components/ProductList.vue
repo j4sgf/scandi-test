@@ -6,7 +6,7 @@
         class="col-md-12 shadow mb-5 bg-body rounded p-4"
         style="min-height: 250px"
       >
-      <div class="form-check d-flex justify-content-center mt-auto mb-3 ">
+      <div v-if="products.length >1" class="form-check d-flex justify-content-center mt-auto mb-3 ">
           <input type="checkbox" class="form-check-input me-2" id="select-all" @click="selectAll" v-model="allSelected">
           <label for="select-all" class="form-label d-flex">Select All</label>
         </div>
@@ -93,6 +93,7 @@ export default {
   },
   methods: {
     saveProductId(){
+      //Post product ID to be deleted from DB by matching product_id
       var id = qs.stringify({ 
         product_id:this.deleteCheckbox
       });
@@ -108,6 +109,7 @@ export default {
     },
     
     retrieveProduct() {
+      //Get all product from DB
       DataService.getAll()
         .then((response) => {
           this.products = response.data;
@@ -126,6 +128,7 @@ export default {
     },
 
     selectAll() {
+      //Implement select All functionality, only shows when there are more than 1 products
       this.deleteCheckbox = [];
             this.selected = [];
             if (!this.allSelected) {
