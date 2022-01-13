@@ -1,5 +1,5 @@
 <?php
-class database{
+class Database{
  
 	var $host = "localhost";
 	var $uname = "root";
@@ -16,7 +16,7 @@ class database{
 			echo "Connection Failed";
 		}
 	}
-  function get_conn(){
+  function getConn(){
     return $this->conn;
   }
 } 

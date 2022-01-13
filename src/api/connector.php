@@ -8,8 +8,8 @@ header("Access-Control-Allow-Headers:Content-Type,Access-Control-Allow-Headers,A
 include_once './db_conn.php';
 include_once './product.php';
 
-class connector
-{   
+class Connector
+{
     public $product_id;
     public $product_sku;
     public $product_name;
@@ -50,56 +50,53 @@ class connector
             $this->furniture_length
         );
         $validators = [
-            'disc_detail' => 'disc',
-            'book_detail' => 'book',
-            'furniture_detail' => 'furniture',
+            'disc_detail' => 'Disc',
+            'book_detail' => 'Book',
+            'furniture_detail' => 'Furniture',
         ];
 
         switch ($this->request) {
             case 'GET':
                 
-                $db = new database();
-                 $conn = $db->get_conn();
+                $db = new Database();
+                 $conn = $db->getConn();
         
                 //code if the client request method GET
-                $d = product_list::display_product();
-                while ($row = mysqli_fetch_row($d)){
-                $result[]= $row;
+                $d = ProductList::displayProduct();
+                while ($row = mysqli_fetch_row($d)) {
+                    $result[]= $row;
                 }
-                if (isset($result)){
-                echo json_encode($result);
-                return json_encode($result);
-                }
-                else{
-                    echo NULL;
-                    return NULL;
+                if (isset($result)) {
+                    echo json_encode($result);
+                    return json_encode($result);
+                } else {
+                    echo null;
+                    return null;
                 }
         
                 break;
         
             case 'POST':
         
-                if (isset($_POST['product_id'])){
-                    
-                    product_list::product_delete($_POST['product_id']);
-
+                if (isset($_POST['product_id'])) {
+                    ProductList::productDelete($_POST['product_id']);
                 }
         
         
                 //code if the client request method is POST
-                else if (
+                elseif (
                     isset($this->product_sku) &&
                     isset($this->product_name) &&
                     isset($this->product_price) &&
-                    (isset($this->disc_size) ||
+                    (
+                        isset($this->disc_size) ||
                         isset($this->book_weight) ||
                         isset($this->furniture_height) ||
                         isset($this->furniture_width) ||
                         isset($this->furniture_length)
                     )
                 ) {
-            
-                    if ($this->product =  new validators($this->product_type, $validators, $product_details)) {
+                    if ($this->product =  new Validators($this->product_type, $validators, $product_details)) {
         
                         // set response code - 201 created
                         http_response_code(201);
@@ -128,14 +125,13 @@ class connector
                         "status_massage" => "Unable a to create product",
                     );
                     echo json_encode($result);
-              
                 }
         
                 break;
 
         
             default:
-                //code if the client request is not GET ,POST ,PUT ,DELETE 
+                //code if the client request is not GET ,POST ,PUT ,DELETE
                 http_response_code(404);
         
                 echo "Request not Permitted";
@@ -143,4 +139,4 @@ class connector
     }
 }
 
-$post_data = new connector();
+$post_data = new Connector();
