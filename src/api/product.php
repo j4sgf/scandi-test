@@ -12,6 +12,7 @@ abstract class ProductList
         $this->furniture_height = !empty($furniture_height) ? "$furniture_height" : null;
         $this->furniture_width = !empty($furniture_width) ? "$furniture_width" : null;
         $this->furniture_length = !empty($furniture_length) ? "$furniture_length" : null;
+        $this->new_data = new InsertProduct();
     }
     public function getProductId()
     {
@@ -29,64 +30,6 @@ abstract class ProductList
     {
         return $this->product_price;
     }
-    public function insertNewData($sql_product_insert)
-    {
-        $product_db = new Database();
-        $conn = $product_db->getConn();
-        if ($conn->connect_errno) {
-            echo "Failed to connect to MySQL: " . $conn->connect_error;
-            exit();
-        }
-        if ($conn->query($sql_product_insert) === true) {
-            $id = $conn->insert_id;
-            echo "Insert to DB succes" . $sql_product_insert;
-        } else {
-            echo "Error2: " . $sql_product_insert . "<br>" . $conn->error;
-        }
-        $conn->close();
-    }
-    public static function displayProduct()
-    {
-        $show_product = new Database();
-        $conn = $show_product->getConn();
-        $sql_product_show = "SELECT product_id, product_sku, product_name, product_price,
-    book_weight, disc_size, furniture_height, furniture_width, furniture_length FROM product ORDER BY product_id ASC";
-        // if ($conn -> connect_errno) {
-        //   echo "Failed to connect to MySQL: " . $conn -> connect_error;
-        //   exit();
-        // }
-        // else {
-        //     echo "NICEB";
-        // }
-
-        $result =  $conn->query($sql_product_show);
-
-        return $result;
-        // echo "Error2: " . $sql_product_show . "<br>" . $conn->error;
-
-
-
-        $conn->close();
-    }
-
-    public static function productDelete($data_id)
-    {
-        $db = new Database();
-        $conn = $db->getConn();
-        foreach ($data_id as $id) {
-            echo $id;
-        
-            $sql_delete = "DELETE FROM product WHERE product.product_id = $id";
-    
-            if ($conn->query($sql_delete) === true) {
-            } else {
-                echo "Error1: " . $sql_delete . "<br>" . $conn->error;
-            }
-        }
-    
-        $conn->close();
-        exit;
-    }
 }
 
 class Book extends ProductList
@@ -102,7 +45,7 @@ class Book extends ProductList
     public function insert_data()
     {
         $book_product_insert = "INSERT INTO product (product_sku, product_name, product_price, book_weight) VALUES ('$this->product_sku', '$this->product_name', '$this->product_price', '$this->book_weight')";
-        parent::insertNewData($book_product_insert);
+        $this->new_data->insert($book_product_insert);
     }
 }
 
@@ -117,7 +60,7 @@ class Disc extends ProductList
     public function insert_data()
     {
         $disc_product_insert = "INSERT INTO product (product_sku, product_name, product_price, disc_size) VALUES ('$this->product_sku', '$this->product_name', '$this->product_price', '$this->disc_size')";
-        parent::insertNewData($disc_product_insert);
+        $this->new_data->insert($disc_product_insert);
     }
 }
 
@@ -140,7 +83,7 @@ class Furniture extends ProductList
     public function insert_data()
     {
         $furniture_product_insert = "INSERT INTO product (product_sku, product_name, product_price, furniture_height, furniture_width, furniture_length ) VALUES ('$this->product_sku', '$this->product_name', '$this->product_price', '$this->furniture_height', '$this->furniture_width', '$this->furniture_length')";
-        parent::insertNewData($furniture_product_insert);
+        $this->new_data->insert($furniture_product_insert);
     }
 }
 

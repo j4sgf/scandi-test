@@ -7,6 +7,7 @@ header("Access-Control-Allow-Headers:Content-Type,Access-Control-Allow-Headers,A
 
 include_once './db_conn.php';
 include_once './product.php';
+include_once './data_handler.php';
 
 class Connector
 {
@@ -62,7 +63,7 @@ class Connector
                  $conn = $db->getConn();
         
                 //code if the client request method GET
-                $d = ProductList::displayProduct();
+                $d = DisplayProduct::display();
                 while ($row = mysqli_fetch_row($d)) {
                     $result[]= $row;
                 }
@@ -79,7 +80,7 @@ class Connector
             case 'POST':
         
                 if (isset($_POST['product_id'])) {
-                    ProductList::productDelete($_POST['product_id']);
+                    DeleteProduct::delete($_POST['product_id']);
                 }
         
         
