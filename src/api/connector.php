@@ -9,6 +9,7 @@ include_once './db_conn.php';
 include_once './product.php';
 include_once './data_handler.php';
 
+
 class Connector
 {
     public $product_id;
@@ -28,12 +29,12 @@ class Connector
         $this->product_sku = isset($_POST['product_sku']) ? $_POST['product_sku'] : '';
         $this->product_name = isset($_POST['product_name']) ? $_POST['product_name'] : '';
         $this->product_price = isset($_POST['product_price']) ? $_POST['product_price'] : '';
-        $this->book_weight = isset($_POST['book_weight']) ? $_POST['book_weight'] : '';
-        $this->disc_size = isset($_POST['disc_size']) ? $_POST['disc_size'] : '';
-        $this->furniture_height = isset($_POST['furniture_height']) ? $_POST['furniture_height'] : '';
-        $this->furniture_width = isset($_POST['furniture_width']) ? $_POST['furniture_width'] : '';
-        $this->furniture_length = isset($_POST['furniture_length']) ? $_POST['furniture_length'] : '';
-        $this->product_type = isset($_POST['product_type']) ? $_POST['product_type'] : '';
+        $this->book_weight = isset($_POST['book_weight']) ? $_POST['book_weight'] : null;
+        $this->disc_size = isset($_POST['disc_size']) ? $_POST['disc_size'] : null;
+        $this->furniture_height = isset($_POST['furniture_height']) ? $_POST['furniture_height'] : null;
+        $this->furniture_width = isset($_POST['furniture_width']) ? $_POST['furniture_width'] : null;
+        $this->furniture_length = isset($_POST['furniture_length']) ? $_POST['furniture_length'] : null;
+        $this->product_type = isset($_POST['product_type']) ? $_POST['product_type'] : null;
         $this->request = $_SERVER['REQUEST_METHOD'];
         $this->getProductDetails();
     }
@@ -60,7 +61,7 @@ class Connector
             case 'GET':
                 
                 $db = new Database();
-                 $conn = $db->getConn();
+                $conn = $db->getConn();
         
                 //code if the client request method GET
                 $d = DisplayProduct::display();
