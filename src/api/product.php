@@ -40,7 +40,6 @@ abstract class ProductList
 
 class Book extends ProductList
 {
-    public $book_product_insert;
     public function getBookWeight()
     {
         return $this->book_weight;
@@ -49,8 +48,6 @@ class Book extends ProductList
 
 class Disc extends ProductList
 {
-    public $disc_product_insert;
-
     public function getDiscSize()
     {
         return $this->disc_size;
@@ -59,8 +56,6 @@ class Disc extends ProductList
 
 class Furniture extends ProductList
 {
-    public $furniture_product_insert;
-
     public function getFurnitureHeight()
     {
         return $this->height;

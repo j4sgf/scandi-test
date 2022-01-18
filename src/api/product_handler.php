@@ -1,4 +1,5 @@
 <?php
+
 class Validators
 {
     public function __construct($product_type, $validators, $product_details)
@@ -64,13 +65,13 @@ class DeleteProduct
         $conn = $db->getConn();
         foreach ($data_id as $id) {
             $sql_delete = "DELETE FROM product WHERE product.product_id = $id";
-    
+
             if ($conn->query($sql_delete) === true) {
             } else {
                 echo "Error1: " . $sql_delete . "<br>" . $conn->error;
             }
         }
-    
+
         $conn->close();
         exit;
     }

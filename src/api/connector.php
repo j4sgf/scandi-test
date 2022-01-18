@@ -1,4 +1,5 @@
 <?php
+
 header("Access-Control-Allow-Origin: *"); // Allow
 header("Content-Type:application/x-www-form-urlencoded;charset=UTF-8");
 header("Access-Control-Allow-Methods:POST,GET,PUT,DELETE");
@@ -7,7 +8,7 @@ header("Access-Control-Allow-Headers:Content-Type,Access-Control-Allow-Headers,A
 
 include_once './db_conn.php';
 include_once './product.php';
-include_once './data_handler.php';
+include_once './product_handler.php';
 
 
 class Connector
@@ -59,10 +60,10 @@ class Connector
 
         switch ($this->request) {
             case 'GET':
-                
+
                 $db = new Database();
                 $conn = $db->getConn();
-        
+
                 //code if the client request method GET
                 $d = DisplayProduct::display();
                 while ($row = mysqli_fetch_row($d)) {
@@ -75,16 +76,16 @@ class Connector
                     echo null;
                     return null;
                 }
-        
+
                 break;
-        
+
             case 'POST':
-        
+
                 if (isset($_POST['product_id'])) {
                     DeleteProduct::delete($_POST['product_id']);
                 }
-        
-        
+
+
                 //code if the client request method is POST
                 elseif (
                     isset($this->product_sku) &&
@@ -99,7 +100,7 @@ class Connector
                     )
                 ) {
                     if ($this->product =  new Validators($this->product_type, $validators, $product_details)) {
-        
+
                         // set response code - 201 created
                         http_response_code(201);
                         //echo json_encode(array("status_code"=>"201"));
@@ -108,10 +109,10 @@ class Connector
                     } else {
                         //setresponsecode-503serviceunavailable
                         http_response_code(503);
-        
+
                         //telltheuser
                         //echojson_encode(array("message"=>"Unabletocreateproduct."));
-        
+
                         $result = array(
                             "status_kode" => 503,
                             "status_massage" => "Unabletocreateproduct"
@@ -121,21 +122,21 @@ class Connector
                 } else {
                     //setresponsecode-400badrequest
                     http_response_code(400);
-        
+
                     $result = array(
                         "status_code" => 400,
                         "status_massage" => "Unable a to create product",
                     );
                     echo json_encode($result);
                 }
-        
+
                 break;
 
-        
+
             default:
                 //code if the client request is not GET ,POST ,PUT ,DELETE
                 http_response_code(404);
-        
+
                 echo "Request not Permitted";
         }
     }
