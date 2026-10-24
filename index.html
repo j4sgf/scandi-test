@@ -390,7 +390,7 @@ function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e
 
 let S = load();
 let ui;
-function resetUi() { ui = { peek: null, sel: null, guess: null, guessText: "", err: "", confirm: null, guesser: null, loc: null, busy: false, line: "", seerResult: null }; }
+function resetUi() { ui = { peek: null, sel: null, guess: null, guessText: "", err: "", confirm: null, guesser: null, loc: null, busy: false, line: "", seerResult: null, returning: false }; }
 resetUi();
 
 // =====================================================================
@@ -1277,6 +1277,9 @@ const Sfx = {
 };
 
 const wait = ms => new Promise(r => setTimeout(r, ms));
+// Night privacy: the phone only makes sound while it sits in the middle of the table.
+// Once a role is called, it stays silent until they've put it back.
+const WW_RETURN_MS = 6000;
 let wwSeq = 0; // bumps whenever a narrated sequence should stop (quit, skip ahead, leave the game)
 
 const WW = {
@@ -1342,18 +1345,29 @@ const WW = {
     ui.busy = true; save(); render();
     if (step === "wolves") Sfx.heartbeat(true);
     await Voice.say(this.L().open[step]); if (id !== wwSeq) return;
+    Sfx.stopAll(); // someone may pick the phone up now
     ui.busy = false; render();
     const who = { wolves: "wolf", seer: "seer", doc: "doc" }[step];
     if (!this.alive(g, who)) {
-      // The role is dead, but the narrator still calls it so nobody can tell.
-      await wait(6000 + rand(3500)); if (id !== wwSeq) return;
+      // The role is dead, but the narrator still calls it and waits about as long as a real turn.
+      await wait(5000 + rand(8000)); if (id !== wwSeq) return;
       this.endStep(id);
     }
   },
   async endStep(id) {
     const g = S.ww.game, step = g.steps[g.si];
-    ui.busy = true; ui.seerResult = null; render();
-    if (step === "wolves") Sfx.heartbeat(false);
+    Sfx.stopAll();
+    ui.busy = true; ui.returning = true; ui.seerResult = null; render();
+    const until = Date.now() + WW_RETURN_MS;
+    const count = setInterval(() => {
+      const el = document.getElementById("ww-count");
+      if (el) el.textContent = Math.max(0, Math.ceil((until - Date.now()) / 1000));
+    }, 250);
+    await wait(WW_RETURN_MS);
+    clearInterval(count);
+    if (id !== wwSeq) return;
+    ui.returning = false; render();
+    Sfx.crickets(true);
     await Voice.say(this.L().close[step]); if (id !== wwSeq) return;
     await wait(1400); if (id !== wwSeq) return;
     this.nextStep(id);
@@ -1534,7 +1548,7 @@ const WW = {
       <summary>How to play</summary>
       <ol>
         <li><b>Deal.</b> Pass the phone around so everyone sees their secret role. Werewolves also see who the other wolves are.</li>
-        <li><b>Night.</b> Put the phone in the middle and tap Start. Everyone closes their eyes. The narrator calls each role in turn: they open their eyes, quietly tap their choice on the phone, then close their eyes again.</li>
+        <li><b>Night.</b> Put the phone in the middle and tap Start. Everyone closes their eyes. The narrator calls each role in turn: they open their eyes, quietly tap their choice, put the phone back in the middle and close their eyes. The phone makes no sound while it's out of the middle, so nobody can hear where it went.</li>
         <li><b>Morning.</b> Everyone wakes up and the narrator announces who the werewolves killed, unless the Doctor saved them.</li>
         <li><b>Day.</b> Argue about who the wolves are. Then everyone points at once, and you tap whoever got the most votes. They're out.</li>
         <li><b>Winning.</b> The village wins when every werewolf is dead. The werewolves win once they equal or outnumber everyone else.</li>
@@ -1567,6 +1581,14 @@ const WW = {
     const g = S.ww.game, step = g.steps[g.si];
     const titles = { wolves: "Werewolves", seer: "Seer", doc: "Doctor" };
     let body = "";
+    if (ui.returning) {
+      return `${this.header(`Night ${g.night}`)}
+      <section class="section center" style="padding-top:18vh">
+        <p class="ww-line">Put the phone back in the middle</p>
+        <p class="hint">Then close your eyes. The narrator stays quiet until then.</p>
+        <div class="timer paused" id="ww-count" aria-live="off">${Math.ceil(WW_RETURN_MS / 1000)}</div>
+      </section>`;
+    }
     if (!ui.busy && step) {
       const who = { wolves: "wolf", seer: "seer", doc: "doc" }[step];
       if (!this.alive(g, who)) {
@@ -1588,6 +1610,7 @@ const WW = {
             ${list.map(i => `<button data-act="pick" data-i="${i}" data-mark="${verb}" aria-pressed="${ui.sel === i}">${esc(g.roles[i].name)}</button>`).join("")}
           </div>
           ${step === "doc" && g.lastSaved != null && g.roles[g.lastSaved].alive ? `<p class="hint">${esc(g.roles[g.lastSaved].name)} was protected last night, so not tonight.</p>` : ""}
+          <p class="hint center" style="text-align:center">The phone stays silent while you choose.</p>
           <button class="btn ${step === "wolves" ? "btn-danger" : "btn-main"}" data-act="wwChoose" ${ui.sel == null ? "disabled" : ""}>${ui.sel == null ? "Choose a player" : `${verb} ${esc(g.roles[ui.sel].name)}`}</button>`;
       }
     }
@@ -1596,7 +1619,6 @@ const WW = {
     <section class="section center">
       <p class="eyebrow">${step ? titles[step] : "Night falls"}</p>
       <p class="ww-line" id="ww-line">${esc(ui.line || "")}</p>
-      ${!ui.busy && step && this.alive(g, { wolves: "wolf", seer: "seer", doc: "doc" }[step]) ? `<button class="link" data-act="wwRepeat">Repeat</button>` : ""}
     </section>
     ${body}`;
   },
@@ -1704,7 +1726,7 @@ const WW = {
       case "wwMute":
         C.muted = !C.muted;
         if (C.muted) { Voice.hush(); Sfx.stopAll(); }
-        else { primeAudio(); Voice.unlock(); if (g && g.phase === "night") { Sfx.crickets(true); if (g.steps[g.si] === "wolves") Sfx.heartbeat(true); } }
+        else { primeAudio(); Voice.unlock(); }
         break;
       case "wwTest":
         primeAudio(); Voice.unlock(); C.muted = false;
@@ -1713,7 +1735,6 @@ const WW = {
       case "wwStart": primeAudio(); Voice.unlock(); this.start(); return "done";
       case "wwNightIntro": g.phase = "nightIntro"; top(); break;
       case "wwStartNight": this.startNight(); return "done";
-      case "wwRepeat": Voice.say(this.L().open[g.steps[g.si]]); return "done";
       case "wwChoose": {
         const step = g.steps[g.si], i = ui.sel;
         if (i == null) return "done";
