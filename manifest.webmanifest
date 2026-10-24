@@ -1,7 +1,7 @@
 {
-  "name": "Undercover Night",
-  "short_name": "Undercover",
-  "description": "Pass-and-play Undercover / Mr. White party game for one phone.",
+  "name": "Game Night",
+  "short_name": "Game Night",
+  "description": "Pass-and-play party games for one phone: Undercover and Spyfall.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
