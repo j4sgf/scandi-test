@@ -2,12 +2,18 @@
 
 A pass-and-play clone of the party game Undercover for one phone. It's a single HTML file with no install, no server and no internet needed (fonts fall back to system fonts offline).
 
-## Put it on your phone
+## Install it as an app (PWA)
 
-- **Android:** copy `index.html` to the phone and open it with Chrome (Files app, then "Open with" Chrome). Use the menu and pick "Add to Home screen" to get an icon.
-- **iPhone:** save `index.html` to the Files app, then open it from there. Or AirDrop it to yourself and open in Safari.
+Served from GitHub Pages at https://j4sgf.github.io/scandi-test/undercover/
 
-Players, settings and the scoreboard are saved in the browser, so they're still there next time.
+- **Android (Chrome):** open the link, then tap menu and pick "Install app" (or "Add to Home screen").
+- **iPhone (Safari):** open the link, tap Share, then "Add to Home Screen".
+
+After the first load it works with no internet. When you change a file, bump `VERSION` in `sw.js` so installed copies update.
+
+You can also just open `index.html` straight from your phone's files. That works too, but without the app icon or offline caching.
+
+Players, settings and the scoreboard are saved on the device, so they're still there next time.
 
 ## Rules in short
 
