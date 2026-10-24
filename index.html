@@ -1168,12 +1168,18 @@ const Voice = {
       try {
         speechSynthesis.cancel();
         const u = new SpeechSynthesisUtterance(text);
+        this.cur = u; // keep a reference: Chrome drops the callbacks of garbage-collected utterances
         u.lang = this.lines().lang;
         const v = this.pick(u.lang); if (v) u.voice = v;
         u.rate = .92; u.pitch = .8;
-        let done = false;
-        const fin = () => { if (!done) { done = true; clearTimeout(t); res(); } };
-        const t = setTimeout(fin, 2500 + text.length * 110);
+        let done = false, started = false;
+        const fin = () => { if (!done) { done = true; clearTimeout(t); clearInterval(poll); res(); } };
+        const t = setTimeout(fin, 2000 + text.length * 90);
+        // Some phones never fire onend, so also watch the speaking flag.
+        const poll = setInterval(() => {
+          if (speechSynthesis.speaking) started = true;
+          else if (started) fin();
+        }, 200);
         u.onend = fin; u.onerror = fin;
         speechSynthesis.speak(u);
       } catch (e) { setTimeout(res, readTime); }
@@ -1185,7 +1191,12 @@ if ("speechSynthesis" in window) { try { speechSynthesis.getVoices(); speechSynt
 // ---- sound effects, synthesized with Web Audio (no audio files) ----
 const Sfx = {
   ok() { return S.ww.sfx && !S.ww.muted && actx; },
-  bus: null, crk: null, heart: null,
+  bus: null, amb: null, crk: null, tmo: null,
+  // Crickets and heartbeat run through this channel so stopAll can silence them instantly, queued tones included.
+  ambBus() {
+    if (!this.amb) { this.amb = actx.createGain(); this.amb.connect(actx.destination); }
+    return this.amb;
+  },
   out() {
     if (!this.bus) {
       // Light echo so the howl sounds like it's coming from the woods.
@@ -1252,28 +1263,33 @@ const Sfx = {
       const s = t + k * .085, o = actx.createOscillator(), g = actx.createGain();
       o.frequency.value = fq;
       g.gain.setValueAtTime(.0001, s); g.gain.exponentialRampToValueAtTime(.035, s + .01); g.gain.exponentialRampToValueAtTime(.0001, s + .055);
-      o.connect(g); g.connect(actx.destination); o.start(s); o.stop(s + .06);
+      o.connect(g); g.connect(this.ambBus()); o.start(s); o.stop(s + .06);
     }
   },
   crickets(on) {
-    clearInterval(this.crk); this.crk = null;
-    if (on) this.crk = setInterval(() => { this.chirp(); if (Math.random() < .5) setTimeout(() => this.chirp(), 330); }, 1150);
+    clearInterval(this.crk); clearTimeout(this.tmo); this.crk = this.tmo = null;
+    if (on) this.crk = setInterval(() => { this.chirp(); if (Math.random() < .5) this.tmo = setTimeout(() => this.chirp(), 330); }, 1150);
   },
-  beat() {
+  beats(n) {
     if (!this.ok()) return;
-    const t = actx.currentTime;
+    const t0 = actx.currentTime + .05;
+    for (let b = 0; b < n; b++) this.beat(t0 + b * .9);
+  },
+  beat(t) {
     [0, .24].forEach((d, k) => {
       const o = actx.createOscillator(), g = actx.createGain(), s = t + d;
       o.frequency.setValueAtTime(k ? 58 : 66, s); o.frequency.exponentialRampToValueAtTime(40, s + .15);
       g.gain.setValueAtTime(.0001, s); g.gain.exponentialRampToValueAtTime(k ? .35 : .5, s + .015); g.gain.exponentialRampToValueAtTime(.0001, s + .22);
-      o.connect(g); g.connect(actx.destination); o.start(s); o.stop(s + .25);
+      o.connect(g); g.connect(this.ambBus()); o.start(s); o.stop(s + .25);
     });
   },
-  heartbeat(on) {
-    clearInterval(this.heart); this.heart = null;
-    if (on) { this.beat(); this.heart = setInterval(() => this.beat(), 1000); }
-  },
-  stopAll() { this.crickets(false); this.heartbeat(false); }
+  stopAll() {
+    this.crickets(false);
+    if (this.amb) {
+      try { this.amb.gain.setValueAtTime(0, actx.currentTime); this.amb.disconnect(); } catch (e) {}
+      this.amb = null;
+    }
+  }
 };
 
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -1343,9 +1359,11 @@ const WW = {
     if (g.si >= g.steps.length) return this.dawn(id);
     const step = g.steps[g.si];
     ui.busy = true; save(); render();
-    if (step === "wolves") Sfx.heartbeat(true);
+    // Ambience ends before a role is called; from here until the phone is back in the middle, nothing plays.
+    Sfx.stopAll();
+    if (step === "wolves" && Sfx.ok()) { Sfx.beats(3); await wait(2700); if (id !== wwSeq) return; Sfx.stopAll(); }
     await Voice.say(this.L().open[step]); if (id !== wwSeq) return;
-    Sfx.stopAll(); // someone may pick the phone up now
+    Sfx.stopAll();
     ui.busy = false; render();
     const who = { wolves: "wolf", seer: "seer", doc: "doc" }[step];
     if (!this.alive(g, who)) {
