@@ -1,7 +1,7 @@
 {
   "name": "Game Night",
   "short_name": "Game Night",
-  "description": "Pass-and-play party games for one phone: Undercover and Spyfall.",
+  "description": "Pass-and-play party games for one phone: Undercover, Spyfall and Werewolf.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

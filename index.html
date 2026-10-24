@@ -211,6 +211,24 @@ details .locs { padding-bottom: 12px; }
 .words div { background: var(--desk-2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; min-width: 0; }
 .words b { display: block; font-family: var(--f-head); font-size: 1.4rem; text-transform: uppercase; overflow-wrap: anywhere; }
 
+/* werewolf */
+.theme-ww { --lamp: #b9a4ff; --lamp-ink: #1b1238; }
+.game.g-ww { --acc: #b9a4ff; }
+.ww-bar { display: flex; justify-content: flex-end; margin-top: -14px; }
+.toggles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.toggle { min-height: 46px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--desk); font-weight: 600; color: var(--muted); }
+.toggle[aria-pressed=true] { border-color: var(--lamp); color: var(--fg); background: color-mix(in srgb, var(--lamp) 16%, var(--desk)); }
+.toggle[disabled] { opacity: .35; }
+.toggle-card { color: inherit; }
+.toggle-card[aria-pressed=true] { border-color: var(--lamp); }
+.moon { width: 120px; height: 120px; border-radius: 50%; align-self: center; background: radial-gradient(circle at 38% 36%, #f4f1ff 0%, #d9d2f5 45%, #a99bd6 100%); box-shadow: 0 0 60px 10px rgba(185,164,255,.25); position: relative; }
+.moon::after { content: ""; position: absolute; width: 22px; height: 22px; border-radius: 50%; background: rgba(120,105,170,.35); top: 54px; left: 30px; box-shadow: 38px -22px 0 -6px rgba(120,105,170,.3), 30px 22px 0 -8px rgba(120,105,170,.28); }
+.moon.small { width: 72px; height: 72px; }
+.moon.small::after { transform: scale(.6); transform-origin: 0 0; }
+.sun { width: 90px; height: 90px; border-radius: 50%; align-self: center; background: radial-gradient(circle, #ffe7a3 0%, #f0b443 70%); box-shadow: 0 0 60px 16px rgba(240,180,67,.3); }
+.ww-line { font-family: var(--f-head); font-weight: 800; font-size: clamp(1.5rem, 7vw, 2rem); line-height: 1.15; text-transform: uppercase; text-wrap: balance; min-height: 2.3em; }
+.score th { font-size: .68rem; letter-spacing: .06em; }
+
 @media (prefers-reduced-motion: reduce) { .flip { animation: none; } .btn { transition: none; } }
 </style>
 </head>
@@ -333,10 +351,11 @@ const EXAMPLE_PLAYERS = ["Alex", "Sam", "Jordan", "Riley", "Casey"];
 function fresh() {
   return {
     players: EXAMPLE_PLAYERS.slice(),
-    scores: { uc: {}, sf: {} },
+    scores: { uc: {}, sf: {}, ww: {} },
     screen: "hub",
     uc: { nUc: 1, nMw: 1, pack: "en", custom: { civ: "", uc: "" }, used: { en: [], id: [] }, game: null },
-    sf: { spies: 1, minutes: 8, pack: "en", used: { en: [], id: [] }, game: null }
+    sf: { spies: 1, minutes: 8, pack: "en", used: { en: [], id: [] }, game: null },
+    ww: { wolves: null, seer: true, doc: true, hunter: false, reveal: true, voice: "en", sfx: true, talk: 3, muted: false, game: null }
   };
 }
 function load() {
@@ -348,7 +367,8 @@ function load() {
       return Object.assign(f, d, {
         scores: Object.assign(f.scores, d.scores),
         uc: Object.assign(f.uc, d.uc),
-        sf: Object.assign(f.sf, d.sf)
+        sf: Object.assign(f.sf, d.sf),
+        ww: Object.assign(f.ww, d.ww)
       });
     }
     // Carry players and scores over from the standalone Undercover app.
@@ -370,7 +390,7 @@ function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e
 
 let S = load();
 let ui;
-function resetUi() { ui = { peek: null, sel: null, guess: null, guessText: "", err: "", confirm: null, guesser: null, loc: null }; }
+function resetUi() { ui = { peek: null, sel: null, guess: null, guessText: "", err: "", confirm: null, guesser: null, loc: null, busy: false, line: "", seerResult: null }; }
 resetUi();
 
 // =====================================================================
@@ -555,24 +575,30 @@ const Hub = {
           <span class="gmeta">3&ndash;12 players &middot; 8 min rounds ${S.sf.game ? `<span class="pill">In progress</span>` : ""}</span>
           <span class="go">${S.sf.game ? "Resume" : "Play"} &rsaquo;</span>
         </button>
+        <button class="game g-ww" data-act="open" data-g="ww">
+          <span class="gname">WEREWOLF</span>
+          <span class="gdesc">Werewolves hunt the village by night; the village hunts them by day. The phone is the narrator, with voice and sound.</span>
+          <span class="gmeta">5&ndash;18 players &middot; 20&ndash;40 min ${S.ww.game ? `<span class="pill">In progress</span>` : ""}</span>
+          <span class="go">${S.ww.game ? "Resume" : "Play"} &rsaquo;</span>
+        </button>
       </div>
     </section>
 
     ${this.scoreboard()}`;
   },
   scoreboard() {
-    const names = new Set([...Object.keys(S.scores.uc), ...Object.keys(S.scores.sf)]);
+    const names = new Set([...Object.keys(S.scores.uc), ...Object.keys(S.scores.sf), ...Object.keys(S.scores.ww)]);
     if (!names.size) return "";
     const rows = [...names].map(n => {
-      const u = S.scores.uc[n] || 0, f = S.scores.sf[n] || 0;
-      return { n, u, f, t: u + f };
+      const u = S.scores.uc[n] || 0, f = S.scores.sf[n] || 0, w = S.scores.ww[n] || 0;
+      return { n, u, f, w, t: u + f + w };
     }).sort((a, b) => b.t - a.t);
     return `<section class="section">
       <div class="section-head"><h2 class="title">Scoreboard</h2>
         <button class="link" data-act="reset">${ui.confirm === "reset" ? "Tap again to clear all scores" : "Clear scores"}</button></div>
       <div class="panel"><table class="score">
-        <thead><tr><th>Player</th><th>Undercover</th><th>Spyfall</th><th>Total</th></tr></thead>
-        <tbody>${rows.map(r => `<tr><td>${esc(r.n)}</td><td class="sub">${r.u}</td><td class="sub">${r.f}</td><td>${r.t}</td></tr>`).join("")}</tbody>
+        <thead><tr><th>Player</th><th>Undercover</th><th>Spyfall</th><th>Werewolf</th><th>Total</th></tr></thead>
+        <tbody>${rows.map(r => `<tr><td>${esc(r.n)}</td><td class="sub">${r.u}</td><td class="sub">${r.f}</td><td class="sub">${r.w}</td><td>${r.t}</td></tr>`).join("")}</tbody>
       </table></div>
     </section>`;
   }
@@ -952,7 +978,7 @@ const SF = {
     const g = S.sf.game, ms = this.left(g);
     return `${gameHeader("SPYFALL", g.running ? "Clock running" : "Clock paused")}
     <div class="clock">
-      <div class="timer ${ms < 60000 ? "low" : ""} ${g.running ? "" : "paused"}" id="sf-timer" role="timer">${this.fmt(ms)}</div>
+      <div class="timer ${ms < 60000 ? "low" : ""} ${g.running ? "" : "paused"}" id="timer" role="timer">${this.fmt(ms)}</div>
       <button class="link" data-act="sfPause">${g.running ? "Pause" : "Resume"}</button>
     </div>
     <p style="text-align:center"><b>${esc(g.roles[g.first].name)}</b> asks the first question.</p>
@@ -1054,7 +1080,665 @@ const SF = {
   }
 };
 
-const GAMES = { uc: UC, sf: SF };
+// =====================================================================
+// Werewolf
+// =====================================================================
+
+const WW_ROLE = {
+  wolf:   { name: "Werewolf", pill: "spy", team: "wolf",
+            desc: "Each night, you and your pack silently pick someone to eliminate. By day, blend in and steer suspicion elsewhere." },
+  vill:   { name: "Villager", pill: "civ", team: "village",
+            desc: "No powers, just your wits. Listen, argue, and vote out the werewolves before they eat everyone." },
+  seer:   { name: "Seer", pill: "", team: "village",
+            desc: "Each night, pick one player and learn whether they're a werewolf. Share what you know carefully: the wolves will come for you." },
+  doc:    { name: "Doctor", pill: "", team: "village",
+            desc: "Each night, pick one player to protect from the werewolves. You can protect yourself, but not the same person two nights in a row." },
+  hunter: { name: "Hunter", pill: "", team: "village",
+            desc: "If you're eliminated, by the wolves or by vote, you immediately take one player down with you." }
+};
+
+// Narrator script. Role names here are spoken, so they follow the narration language.
+const WW_LINES = {
+  en: {
+    lang: "en-US",
+    night: n => `Night ${n}. Everyone, close your eyes.`,
+    open: { wolves: "Werewolves, open your eyes. Silently choose your victim.", seer: "Seer, open your eyes. Choose someone to investigate.", doc: "Doctor, open your eyes. Choose someone to protect tonight." },
+    close: { wolves: "Werewolves, close your eyes.", seer: "Seer, close your eyes.", doc: "Doctor, close your eyes." },
+    wake: "Everyone, wake up. The sun is rising.",
+    killed: x => `Last night, ${x} was killed by the werewolves.`,
+    nobody: "Good news. Nobody died last night.",
+    was: (x, r) => `${x} was ${r}.`,
+    hunter: x => `${x} was the Hunter. Hunter, take one player down with you.`,
+    shot: x => `The Hunter took ${x} down.`,
+    talk: "Discuss. Who among you are the werewolves?",
+    timeUp: "Time's up. Vote now.",
+    voted: x => `The village has voted out ${x}.`,
+    skip: "The village could not agree. Nobody is eliminated today.",
+    village: "The last werewolf is dead. The village wins!",
+    wolves: "The werewolves have taken over the village. Werewolves win!",
+    test: "Night falls on the village. Everyone, close your eyes.",
+    roles: { wolf: "a Werewolf", vill: "a Villager", seer: "the Seer", doc: "the Doctor", hunter: "the Hunter" }
+  },
+  id: {
+    lang: "id-ID",
+    night: n => `Malam ke-${n}. Semua, pejamkan mata.`,
+    open: { wolves: "Serigala, buka mata kalian. Pilih mangsa kalian tanpa suara.", seer: "Peramal, buka matamu. Pilih satu orang untuk diterawang.", doc: "Dokter, buka matamu. Pilih satu orang untuk dilindungi malam ini." },
+    close: { wolves: "Serigala, pejamkan mata.", seer: "Peramal, pejamkan mata.", doc: "Dokter, pejamkan mata." },
+    wake: "Semua, bangun. Matahari sudah terbit.",
+    killed: x => `Tadi malam, ${x} tewas dimangsa serigala.`,
+    nobody: "Kabar baik. Tadi malam tidak ada yang tewas.",
+    was: (x, r) => `${x} adalah ${r}.`,
+    hunter: x => `${x} adalah Pemburu. Pemburu, bawa satu orang bersamamu.`,
+    shot: x => `Pemburu menembak ${x}.`,
+    talk: "Silakan berdiskusi. Siapa serigalanya?",
+    timeUp: "Waktu habis. Saatnya memilih.",
+    voted: x => `Warga desa memutuskan mengusir ${x}.`,
+    skip: "Warga tidak sepakat. Hari ini tidak ada yang diusir.",
+    village: "Serigala terakhir sudah mati. Warga desa menang!",
+    wolves: "Serigala menguasai desa. Serigala menang!",
+    test: "Malam tiba di desa. Semua, pejamkan mata.",
+    roles: { wolf: "Serigala", vill: "Warga", seer: "Peramal", doc: "Dokter", hunter: "Pemburu" }
+  }
+};
+
+// ---- narrator voice (the phone's built-in text-to-speech; works offline) ----
+const Voice = {
+  ok() { return "speechSynthesis" in window && S.ww.voice !== "off" && !S.ww.muted; },
+  lines() { return WW_LINES[S.ww.voice === "id" ? "id" : "en"]; },
+  pick(lang) {
+    try {
+      const vs = speechSynthesis.getVoices();
+      const base = lang.slice(0, 2);
+      return vs.find(v => v.lang === lang && v.localService) || vs.find(v => v.lang === lang)
+        || vs.find(v => v.lang.replace("_", "-").startsWith(base)) || null;
+    } catch (e) { return null; }
+  },
+  hasLang(code) { return !!this.pick(WW_LINES[code].lang); },
+  // iOS only lets a page speak if the first utterance starts inside a tap.
+  unlock() { try { if ("speechSynthesis" in window) { const u = new SpeechSynthesisUtterance(" "); u.volume = 0; speechSynthesis.speak(u); } } catch (e) {} },
+  hush() { try { "speechSynthesis" in window && speechSynthesis.cancel(); } catch (e) {} },
+  // Speaks a line and resolves when it ends. Falls back to a reading-time pause when muted or unsupported.
+  say(text) {
+    ui.line = text;
+    const el = document.getElementById("ww-line");
+    if (el) el.textContent = text;
+    const readTime = 900 + text.length * 45;
+    return new Promise(res => {
+      if (!this.ok()) return setTimeout(res, readTime);
+      try {
+        speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = this.lines().lang;
+        const v = this.pick(u.lang); if (v) u.voice = v;
+        u.rate = .92; u.pitch = .8;
+        let done = false;
+        const fin = () => { if (!done) { done = true; clearTimeout(t); res(); } };
+        const t = setTimeout(fin, 2500 + text.length * 110);
+        u.onend = fin; u.onerror = fin;
+        speechSynthesis.speak(u);
+      } catch (e) { setTimeout(res, readTime); }
+    });
+  }
+};
+if ("speechSynthesis" in window) { try { speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged = () => { if (S.screen === "ww" && !S.ww.game) render(); }; } catch (e) {} }
+
+// ---- sound effects, synthesized with Web Audio (no audio files) ----
+const Sfx = {
+  ok() { return S.ww.sfx && !S.ww.muted && actx; },
+  bus: null, crk: null, heart: null,
+  out() {
+    if (!this.bus) {
+      // Light echo so the howl sounds like it's coming from the woods.
+      const g = actx.createGain(), d = actx.createDelay(), fb = actx.createGain(), lp = actx.createBiquadFilter();
+      g.gain.value = .9; d.delayTime.value = .32; fb.gain.value = .32; lp.frequency.value = 1400;
+      g.connect(actx.destination); g.connect(d); d.connect(lp); lp.connect(fb); fb.connect(d); lp.connect(actx.destination);
+      this.bus = g;
+    }
+    return this.bus;
+  },
+  howl() {
+    if (!this.ok()) return;
+    const t = actx.currentTime + .05, out = this.out();
+    const voice = (mult, amp, type, delay) => {
+      const s = t + delay;
+      const o = actx.createOscillator(), f = actx.createBiquadFilter(), g = actx.createGain();
+      const lfo = actx.createOscillator(), lg = actx.createGain();
+      o.type = type; f.type = "lowpass"; f.frequency.value = 1600;
+      o.frequency.setValueAtTime(240 * mult, s);
+      o.frequency.exponentialRampToValueAtTime(540 * mult, s + .7);
+      o.frequency.setValueAtTime(540 * mult, s + 2);
+      o.frequency.exponentialRampToValueAtTime(360 * mult, s + 3.3);
+      lfo.frequency.value = 5; lg.gain.value = 7 * mult; lfo.connect(lg); lg.connect(o.frequency);
+      g.gain.setValueAtTime(.0001, s);
+      g.gain.exponentialRampToValueAtTime(amp, s + .5);
+      g.gain.setValueAtTime(amp, s + 2.3);
+      g.gain.exponentialRampToValueAtTime(.0001, s + 3.4);
+      o.connect(f); f.connect(g); g.connect(out);
+      o.start(s); lfo.start(s); o.stop(s + 3.5); lfo.stop(s + 3.5);
+    };
+    voice(1, .22, "triangle", 0); voice(2, .03, "sine", 0); voice(1.12, .08, "triangle", .5);
+  },
+  chime() {
+    if (!this.ok()) return;
+    const t = actx.currentTime + .05;
+    [523.25, 659.25, 783.99, 1046.5].forEach((fq, k) => {
+      [1, 2.76].forEach((p, j) => {
+        const o = actx.createOscillator(), g = actx.createGain(), s = t + k * .22;
+        o.frequency.value = fq * p;
+        g.gain.setValueAtTime(.0001, s);
+        g.gain.exponentialRampToValueAtTime(j ? .03 : .16, s + .01);
+        g.gain.exponentialRampToValueAtTime(.0001, s + 1.8);
+        o.connect(g); g.connect(this.out()); o.start(s); o.stop(s + 1.9);
+      });
+    });
+  },
+  thud() {
+    if (!this.ok()) return;
+    const t = actx.currentTime + .02;
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.frequency.setValueAtTime(120, t); o.frequency.exponentialRampToValueAtTime(38, t + .6);
+    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.7, t + .02); g.gain.exponentialRampToValueAtTime(.0001, t + 1.1);
+    o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + 1.2);
+    const n = actx.createBufferSource(), buf = actx.createBuffer(1, actx.sampleRate * .4, actx.sampleRate), ch = buf.getChannelData(0);
+    for (let i = 0; i < ch.length; i++) ch[i] = (Math.random() * 2 - 1) * (1 - i / ch.length);
+    const nf = actx.createBiquadFilter(), ng = actx.createGain();
+    nf.type = "lowpass"; nf.frequency.value = 500; ng.gain.value = .35;
+    n.buffer = buf; n.connect(nf); nf.connect(ng); ng.connect(actx.destination); n.start(t);
+  },
+  chirp() {
+    if (!this.ok()) return;
+    const t = actx.currentTime, fq = 4200 + Math.random() * 400;
+    for (let k = 0; k < 3; k++) {
+      const s = t + k * .085, o = actx.createOscillator(), g = actx.createGain();
+      o.frequency.value = fq;
+      g.gain.setValueAtTime(.0001, s); g.gain.exponentialRampToValueAtTime(.035, s + .01); g.gain.exponentialRampToValueAtTime(.0001, s + .055);
+      o.connect(g); g.connect(actx.destination); o.start(s); o.stop(s + .06);
+    }
+  },
+  crickets(on) {
+    clearInterval(this.crk); this.crk = null;
+    if (on) this.crk = setInterval(() => { this.chirp(); if (Math.random() < .5) setTimeout(() => this.chirp(), 330); }, 1150);
+  },
+  beat() {
+    if (!this.ok()) return;
+    const t = actx.currentTime;
+    [0, .24].forEach((d, k) => {
+      const o = actx.createOscillator(), g = actx.createGain(), s = t + d;
+      o.frequency.setValueAtTime(k ? 58 : 66, s); o.frequency.exponentialRampToValueAtTime(40, s + .15);
+      g.gain.setValueAtTime(.0001, s); g.gain.exponentialRampToValueAtTime(k ? .35 : .5, s + .015); g.gain.exponentialRampToValueAtTime(.0001, s + .22);
+      o.connect(g); g.connect(actx.destination); o.start(s); o.stop(s + .25);
+    });
+  },
+  heartbeat(on) {
+    clearInterval(this.heart); this.heart = null;
+    if (on) { this.beat(); this.heart = setInterval(() => this.beat(), 1000); }
+  },
+  stopAll() { this.crickets(false); this.heartbeat(false); }
+};
+
+const wait = ms => new Promise(r => setTimeout(r, ms));
+let wwSeq = 0; // bumps whenever a narrated sequence should stop (quit, skip ahead, leave the game)
+
+const WW = {
+  defaults(n) { return n <= 5 ? 1 : n <= 8 ? 2 : n <= 12 ? 3 : 4; },
+  specials(C) { return (C.seer ? 1 : 0) + (C.doc ? 1 : 0) + (C.hunter ? 1 : 0); },
+  autoWolves() { const n = S.players.length; S.ww.wolves = Math.max(1, Math.min(this.defaults(n), Math.floor((n - 1) / 2))); },
+  valid(n, C) { return n >= 5 && C.wolves >= 1 && C.wolves * 2 < n && C.wolves + this.specials(C) <= n; },
+  L() { return Voice.lines(); },
+  alive(g, role) { return g.roles.some(r => r.alive && r.role === role); },
+  inGame(g, role) { return g.roles.some(r => r.role === role); },
+  aliveIdx(g) { return g.roles.map((r, i) => i).filter(i => g.roles[i].alive); },
+  secret(g, r) {
+    const R = WW_ROLE[r.role];
+    const pack = r.role === "wolf" ? g.roles.filter(x => x.role === "wolf" && x !== r).map(x => x.name) : [];
+    return `<span class="note">You are ${r.role === "wolf" ? "a" : r.role === "vill" ? "a" : "the"}</span>
+      <span class="stamp ${r.role === "wolf" ? "spy" : "civ"}" style="margin:8px 0">${R.name.toUpperCase()}</span>
+      <p class="note">${R.desc}</p>
+      ${r.role === "wolf" ? `<p class="note"><b>${pack.length ? `Your pack: ${pack.map(esc).join(", ")}` : "You hunt alone."}</b></p>` : ""}`;
+  },
+  stop() { wwSeq++; Voice.hush(); Sfx.stopAll(); },
+
+  start() {
+    const C = S.ww;
+    const pe = playerError(); if (pe) return fail(pe);
+    const n = S.players.length;
+    if (n < 5) return fail("Werewolf needs at least 5 players. Add more on the Game Night screen.");
+    if (C.wolves == null || !this.valid(n, C)) this.autoWolves();
+    if (!this.valid(n, C)) return fail("Too many special roles for this many players. Switch one off.");
+    const deck = shuffle([
+      ...Array(C.wolves).fill("wolf"),
+      ...(C.seer ? ["seer"] : []), ...(C.doc ? ["doc"] : []), ...(C.hunter ? ["hunter"] : []),
+      ...Array(n - C.wolves - this.specials(C)).fill("vill")
+    ]);
+    C.game = {
+      roles: S.players.map((name, i) => ({ name, role: deck[i], alive: true, seen: false })),
+      phase: "reveal", night: 1, steps: [], si: 0,
+      victim: null, saved: null, lastSaved: null, seerSaw: null,
+      report: [], shot: null, hunterUsed: false, hunter: null, back: null, votedOut: undefined,
+      remaining: 0, endAt: 0, running: false, timeUp: false, winner: null, awards: {}
+    };
+    resetUi(); keepAwake(); save(); render(); top();
+  },
+
+  // ---- night ----
+  async startNight() {
+    const g = S.ww.game, id = ++wwSeq;
+    primeAudio(); Voice.unlock();
+    if (!this.alive(g, "doc")) g.lastSaved = null;
+    g.phase = "night"; g.si = -1; g.victim = null; g.saved = null; g.seerSaw = null; g.shot = null;
+    g.steps = ["wolves", ...(this.inGame(g, "seer") ? ["seer"] : []), ...(this.inGame(g, "doc") ? ["doc"] : [])];
+    ui.busy = true; ui.sel = null; save(); render(); top();
+    Sfx.howl(); Sfx.crickets(true);
+    await wait(1200); if (id !== wwSeq) return;
+    await Voice.say(this.L().night(g.night)); if (id !== wwSeq) return;
+    await wait(1500); if (id !== wwSeq) return;
+    this.nextStep(id);
+  },
+  async nextStep(id) {
+    const g = S.ww.game;
+    g.si++; ui.sel = null; ui.seerResult = null;
+    if (g.si >= g.steps.length) return this.dawn(id);
+    const step = g.steps[g.si];
+    ui.busy = true; save(); render();
+    if (step === "wolves") Sfx.heartbeat(true);
+    await Voice.say(this.L().open[step]); if (id !== wwSeq) return;
+    ui.busy = false; render();
+    const who = { wolves: "wolf", seer: "seer", doc: "doc" }[step];
+    if (!this.alive(g, who)) {
+      // The role is dead, but the narrator still calls it so nobody can tell.
+      await wait(6000 + rand(3500)); if (id !== wwSeq) return;
+      this.endStep(id);
+    }
+  },
+  async endStep(id) {
+    const g = S.ww.game, step = g.steps[g.si];
+    ui.busy = true; ui.seerResult = null; render();
+    if (step === "wolves") Sfx.heartbeat(false);
+    await Voice.say(this.L().close[step]); if (id !== wwSeq) return;
+    await wait(1400); if (id !== wwSeq) return;
+    this.nextStep(id);
+  },
+
+  // ---- morning ----
+  kill(i) { S.ww.game.roles[i].alive = false; },
+  async dawn(id) {
+    const g = S.ww.game, L = this.L();
+    Sfx.stopAll();
+    const died = g.victim != null && g.victim !== g.saved ? g.victim : null;
+    if (died != null) this.kill(died);
+    g.report = died != null ? [died] : [];
+    g.phase = "dawn"; ui.busy = true; save(); render(); top();
+    Sfx.chime();
+    await wait(600); if (id !== wwSeq) return;
+    await Voice.say(L.wake); if (id !== wwSeq) return;
+    if (died != null) {
+      Sfx.thud();
+      await Voice.say(L.killed(g.roles[died].name)); if (id !== wwSeq) return;
+      if (S.ww.reveal && g.roles[died].role !== "hunter") { await Voice.say(L.was(g.roles[died].name, L.roles[g.roles[died].role])); if (id !== wwSeq) return; }
+    } else {
+      await Voice.say(L.nobody); if (id !== wwSeq) return;
+    }
+    this.afterDeaths(died, "dawn", id);
+  },
+  async afterDeaths(died, back, id) {
+    const g = S.ww.game, L = this.L();
+    if (died != null && g.roles[died].role === "hunter" && !g.hunterUsed) {
+      g.hunterUsed = true; g.hunter = died; g.back = back; g.phase = "hunter";
+      ui.sel = null; ui.busy = true; save(); render(); top();
+      await Voice.say(L.hunter(g.roles[died].name)); if (id !== wwSeq) return;
+      ui.busy = false; render();
+      return;
+    }
+    const win = this.checkWin();
+    if (win) {
+      this.finish(win);
+      await Voice.say(win === "village" ? L.village : L.wolves);
+      return;
+    }
+    g.phase = back; ui.busy = false; save(); render();
+  },
+  async hunterShoots(t) {
+    const g = S.ww.game, L = this.L(), id = ++wwSeq;
+    this.kill(t); g.shot = { by: g.hunter, t };
+    g.phase = g.back; ui.busy = true; save(); render(); top();
+    Sfx.thud();
+    await Voice.say(L.shot(g.roles[t].name)); if (id !== wwSeq) return;
+    if (S.ww.reveal) { await Voice.say(L.was(g.roles[t].name, L.roles[g.roles[t].role])); if (id !== wwSeq) return; }
+    this.afterDeaths(t, g.back, id);
+  },
+  // Resolves a pending Hunter shot or a finished game before moving on. Returns true if it took over.
+  settle() {
+    const g = S.ww.game;
+    const h = g.roles.findIndex(r => r.role === "hunter" && !r.alive);
+    if (h >= 0 && !g.hunterUsed) {
+      g.hunterUsed = true; g.hunter = h; g.back = g.phase; g.phase = "hunter"; ui.sel = null; ui.busy = false;
+      save(); render(); top(); return true;
+    }
+    const win = this.checkWin();
+    if (win) { this.finish(win); return true; }
+    return false;
+  },
+  checkWin() {
+    const g = S.ww.game;
+    let wolves = 0, others = 0;
+    g.roles.forEach(r => { if (r.alive) r.role === "wolf" ? wolves++ : others++; });
+    if (wolves === 0) return "village";
+    if (wolves >= others) return "wolves";
+    return null;
+  },
+  finish(win) {
+    const g = S.ww.game;
+    Sfx.stopAll(); SF.pause(g);
+    g.winner = win; g.phase = "over"; g.awards = {};
+    g.roles.forEach(r => {
+      const pts = win === "wolves" ? (r.role === "wolf" ? 3 : 0) : (r.role === "wolf" ? 0 : 2);
+      if (pts) { g.awards[r.name] = pts; addScore("ww", r.name, pts); }
+    });
+    ui.busy = false; save(); render(); top();
+  },
+
+  // ---- day ----
+  async toDay() {
+    const g = S.ww.game, id = ++wwSeq;
+    Voice.hush();
+    g.phase = "day"; g.timeUp = false; g.remaining = S.ww.talk * 60000; g.running = false;
+    if (S.ww.talk) SF.resume(g);
+    save(); render(); top();
+    await Voice.say(this.L().talk);
+  },
+  async timeUp() {
+    const g = S.ww.game, id = ++wwSeq;
+    g.running = false; g.remaining = 0; g.timeUp = true; g.phase = "vote"; ui.sel = null;
+    alarm(); save(); render(); top();
+    await wait(1600); if (id !== wwSeq) return;
+    Voice.say(this.L().timeUp);
+  },
+  async vote(i) {
+    const g = S.ww.game, L = this.L(), id = ++wwSeq;
+    SF.pause(g);
+    g.votedOut = i; g.shot = null;
+    if (i != null) this.kill(i);
+    g.phase = "voted"; ui.busy = true; save(); render(); top();
+    if (i != null) {
+      Sfx.thud();
+      await Voice.say(L.voted(g.roles[i].name)); if (id !== wwSeq) return;
+      if (S.ww.reveal && g.roles[i].role !== "hunter") { await Voice.say(L.was(g.roles[i].name, L.roles[g.roles[i].role])); if (id !== wwSeq) return; }
+    } else {
+      await Voice.say(L.skip); if (id !== wwSeq) return;
+    }
+    this.afterDeaths(i, "voted", id);
+  },
+
+  // ---- views ----
+  view() {
+    const g = S.ww.game;
+    if (!g) return this.vSetup();
+    return this["v_" + g.phase]();
+  },
+  header(sub) {
+    return `${gameHeader("WEREWOLF", sub)}
+      <div class="ww-bar"><button class="link" data-act="wwMute" aria-pressed="${!S.ww.muted}">${S.ww.muted ? "Sound off" : "Sound on"}</button></div>`;
+  },
+  vSetup() {
+    const C = S.ww, n = S.players.length;
+    if (C.wolves == null || (n >= 5 && !this.valid(n, C))) this.autoWolves();
+    const vills = n - C.wolves - this.specials(C);
+    const canW = w => n >= 5 && this.valid(n, Object.assign({}, C, { wolves: w }));
+    const tog = k => n >= 5 && (C[k] || this.valid(n, Object.assign({}, C, { [k]: true })));
+    const tts = "speechSynthesis" in window;
+    const noId = tts && C.voice === "id" && !Voice.hasLang("id");
+    return `
+    ${gameHeader("WEREWOLF", "The phone narrates. You lie.")}
+    ${rosterPanel()}
+    ${n < 5 ? `<p class="err">Werewolf needs at least 5 players.</p>` : ""}
+    <section class="section">
+      <h2 class="title">Roles</h2>
+      <div class="roles two-up">
+        <div class="role"><span class="n c-uc">${C.wolves}</span><span class="lbl">Werewolves</span>
+          <div class="step"><button data-act="wwStep" data-k="wolves" data-d="-1" aria-label="Fewer werewolves" ${canW(C.wolves - 1) ? "" : "disabled"}>&minus;</button><button data-act="wwStep" data-k="wolves" data-d="1" aria-label="More werewolves" ${canW(C.wolves + 1) ? "" : "disabled"}>+</button></div></div>
+        <div class="role"><span class="n c-civ">${Math.max(0, vills)}</span><span class="lbl">Villagers</span><span class="hint" style="font-size:.75rem">the rest</span></div>
+      </div>
+      <div class="toggles" role="group" aria-label="Special roles">
+        ${["seer", "doc", "hunter"].map(k => `<button class="toggle" data-act="wwToggle" data-k="${k}" aria-pressed="${!!C[k]}" ${tog(k) ? "" : "disabled"}>${WW_ROLE[k].name}</button>`).join("")}
+      </div>
+      <p class="hint">Seer checks one player a night, Doctor protects one, Hunter shoots someone on the way out.</p>
+    </section>
+    <section class="section">
+      <h2 class="title">Narrator</h2>
+      <div class="seg" role="group" aria-label="Narrator voice">
+        <button data-act="wwVoice" data-v="en" aria-pressed="${C.voice === "en"}" ${tts ? "" : "disabled"}>English</button>
+        <button data-act="wwVoice" data-v="id" aria-pressed="${C.voice === "id"}" ${tts ? "" : "disabled"}>Indonesia</button>
+        <button data-act="wwVoice" data-v="off" aria-pressed="${C.voice === "off" || !tts}">Text only</button>
+      </div>
+      <div class="seg two-up" role="group" aria-label="Sound effects">
+        <button data-act="wwSfx" data-v="1" aria-pressed="${!!C.sfx}">Sound effects on</button>
+        <button data-act="wwSfx" data-v="0" aria-pressed="${!C.sfx}">Off</button>
+      </div>
+      <p class="hint">${!tts ? "This browser can't speak, so the narration shows as text."
+        : noId ? "This phone has no Indonesian voice installed, so it will read with its default voice. You can add one in your phone's text-to-speech settings."
+        : "Uses your phone's built-in voice, so it works offline. Turn the volume up."}</p>
+      <button class="btn btn-ghost" data-act="wwTest">Test the sound</button>
+    </section>
+    <section class="section">
+      <h2 class="title">Daytime</h2>
+      <div class="roles two-up">
+        <div class="role"><span class="n c-lamp">${C.talk || "Off"}</span><span class="lbl">${C.talk ? "Minutes to talk" : "Talk timer"}</span>
+          <div class="step"><button data-act="wwStep" data-k="talk" data-d="-1" aria-label="Shorter discussion" ${C.talk <= 0 ? "disabled" : ""}>&minus;</button><button data-act="wwStep" data-k="talk" data-d="1" aria-label="Longer discussion" ${C.talk >= 10 ? "disabled" : ""}>+</button></div></div>
+        <button class="role toggle-card" data-act="wwToggle" data-k="reveal" aria-pressed="${!!C.reveal}">
+          <span class="n">${C.reveal ? "Yes" : "No"}</span><span class="lbl">Reveal roles of the dead</span></button>
+      </div>
+    </section>
+    ${ui.err ? `<p class="err" role="alert">${esc(ui.err)}</p>` : ""}
+    <button class="btn btn-main" data-act="wwStart" ${n < 5 ? "disabled" : ""}>Deal the roles</button>
+    <details>
+      <summary>How to play</summary>
+      <ol>
+        <li><b>Deal.</b> Pass the phone around so everyone sees their secret role. Werewolves also see who the other wolves are.</li>
+        <li><b>Night.</b> Put the phone in the middle and tap Start. Everyone closes their eyes. The narrator calls each role in turn: they open their eyes, quietly tap their choice on the phone, then close their eyes again.</li>
+        <li><b>Morning.</b> Everyone wakes up and the narrator announces who the werewolves killed, unless the Doctor saved them.</li>
+        <li><b>Day.</b> Argue about who the wolves are. Then everyone points at once, and you tap whoever got the most votes. They're out.</li>
+        <li><b>Winning.</b> The village wins when every werewolf is dead. The werewolves win once they equal or outnumber everyone else.</li>
+        <li><b>Dead players</b> stay quiet for the rest of the game. No hints from beyond the grave.</li>
+      </ol>
+      <ul><li>Points: werewolves 3 each when they win, everyone on the village side 2 each when the village wins.</li></ul>
+    </details>`;
+  },
+  v_reveal() {
+    const g = S.ww.game;
+    return `${this.header("Dealing the roles")}
+    ${revealGrid(g, "Each player taps their own name and checks their role in private. Then put the phone in the middle of the table.")}
+    <button class="btn btn-main" data-act="wwNightIntro" ${g.roles.some(r => !r.seen) ? "disabled" : ""}>Everyone's ready</button>
+    ${quitLink()}`;
+  },
+  v_nightIntro() {
+    const g = S.ww.game;
+    return `${this.header(`Night ${g.night}`)}
+    <div class="moon" aria-hidden="true"></div>
+    <section class="section center">
+      <p class="eyebrow">Night ${g.night}</p>
+      <h2 class="title">Phone in the middle</h2>
+      <p class="hint">Tap Start, then everyone closes their eyes and listens to the narrator.</p>
+    </section>
+    <button class="btn btn-main" data-act="wwStartNight">Start night ${g.night}</button>
+    ${this.graveyard()}
+    ${quitLink()}`;
+  },
+  v_night() {
+    const g = S.ww.game, step = g.steps[g.si];
+    const titles = { wolves: "Werewolves", seer: "Seer", doc: "Doctor" };
+    let body = "";
+    if (!ui.busy && step) {
+      const who = { wolves: "wolf", seer: "seer", doc: "doc" }[step];
+      if (!this.alive(g, who)) {
+        body = `<p class="hint center">&hellip;</p><button class="link" data-act="wwEndStep" style="align-self:center">Continue</button>`;
+      } else if (step === "seer" && ui.seerResult != null) {
+        const r = g.roles[ui.seerResult], bad = r.role === "wolf";
+        body = `<div class="dossier flip">
+            <span class="who">${esc(r.name)}</span>
+            <span class="stamp ${bad ? "spy" : "civ"}">${bad ? "WEREWOLF" : "NOT A WEREWOLF"}</span>
+          </div>
+          <button class="btn btn-main" data-act="wwEndStep">Done, close my eyes</button>`;
+      } else {
+        const list = this.aliveIdx(g).filter(i =>
+          step === "wolves" ? g.roles[i].role !== "wolf" :
+          step === "seer" ? g.roles[i].role !== "seer" :
+          i !== g.lastSaved);
+        const verb = { wolves: "Kill", seer: "Check", doc: "Protect" }[step];
+        body = `<div class="vote" role="group" aria-label="Choose a player">
+            ${list.map(i => `<button data-act="pick" data-i="${i}" data-mark="${verb}" aria-pressed="${ui.sel === i}">${esc(g.roles[i].name)}</button>`).join("")}
+          </div>
+          ${step === "doc" && g.lastSaved != null && g.roles[g.lastSaved].alive ? `<p class="hint">${esc(g.roles[g.lastSaved].name)} was protected last night, so not tonight.</p>` : ""}
+          <button class="btn ${step === "wolves" ? "btn-danger" : "btn-main"}" data-act="wwChoose" ${ui.sel == null ? "disabled" : ""}>${ui.sel == null ? "Choose a player" : `${verb} ${esc(g.roles[ui.sel].name)}`}</button>`;
+      }
+    }
+    return `${this.header(`Night ${g.night}`)}
+    <div class="moon small" aria-hidden="true"></div>
+    <section class="section center">
+      <p class="eyebrow">${step ? titles[step] : "Night falls"}</p>
+      <p class="ww-line" id="ww-line">${esc(ui.line || "")}</p>
+      ${!ui.busy && step && this.alive(g, { wolves: "wolf", seer: "seer", doc: "doc" }[step]) ? `<button class="link" data-act="wwRepeat">Repeat</button>` : ""}
+    </section>
+    ${body}`;
+  },
+  v_dawn() {
+    const g = S.ww.game, d = g.report[0];
+    return `${this.header(`Day ${g.night}`)}
+    <div class="sun" aria-hidden="true"></div>
+    ${d != null ? `<div class="dossier flip">
+        <span class="eyebrow">Found at dawn</span>
+        <span class="who">${esc(g.roles[d].name)}</span>
+        ${S.ww.reveal ? `<span class="note">was ${g.roles[d].role === "wolf" || g.roles[d].role === "vill" ? "a" : "the"}</span><span class="stamp ${g.roles[d].role === "wolf" ? "spy" : "civ"}">${WW_ROLE[g.roles[d].role].name.toUpperCase()}</span>` : `<span class="note">was killed in the night.</span>`}
+      </div>` : `<div class="banner" style="color:var(--civ)">Nobody died</div><p class="hint center" style="text-align:center">The Doctor must have been busy.</p>`}
+    ${this.shotNote()}
+    <button class="btn btn-main" data-act="wwToDay" ${ui.busy ? "disabled" : ""}>${ui.busy ? "Listen to the narrator&hellip;" : "Start the discussion"}</button>
+    ${this.graveyard()}`;
+  },
+  v_hunter() {
+    const g = S.ww.game, h = g.roles[g.hunter];
+    const list = this.aliveIdx(g);
+    return `${this.header("The Hunter's last shot")}
+    <div class="dossier flip">
+      <span class="who">${esc(h.name)}</span>
+      <span class="stamp civ">HUNTER</span>
+      <p class="note">Take one player down with you. Choose fast.</p>
+    </div>
+    <div class="vote">${list.map(i => `<button data-act="pick" data-i="${i}" data-mark="Shoot" aria-pressed="${ui.sel === i}">${esc(g.roles[i].name)}</button>`).join("")}</div>
+    <button class="btn btn-danger" data-act="wwShoot" ${ui.sel == null || ui.busy ? "disabled" : ""}>${ui.sel == null ? "Choose a player" : `Shoot ${esc(g.roles[ui.sel].name)}`}</button>`;
+  },
+  v_day() {
+    const g = S.ww.game, ms = SF.left(g);
+    return `${this.header(`Day ${g.night}`)}
+    ${S.ww.talk ? `<div class="clock">
+      <div class="timer ${ms < 30000 ? "low" : ""} ${g.running ? "" : "paused"}" id="timer" role="timer">${SF.fmt(ms)}</div>
+      <button class="link" data-act="wwPause">${g.running ? "Pause" : "Resume"}</button>
+    </div>` : ""}
+    <section class="section">
+      <p class="eyebrow">Day ${g.night} &middot; Discussion</p>
+      <h2 class="title">Who are the wolves?</h2>
+      <p class="hint">Talk it out. When you're ready, everyone points at the same time and you tap whoever got the most votes.</p>
+    </section>
+    <button class="btn btn-main" data-act="wwToVote">Time to vote</button>
+    ${this.graveyard()}
+    ${forgotChips(this.aliveIdx(g), "Forgot your role?")}
+    ${quitLink()}`;
+  },
+  v_vote() {
+    const g = S.ww.game;
+    return `${this.header(`Day ${g.night}`)}
+    <section class="section">
+      <p class="eyebrow">Day ${g.night} &middot; Vote</p>
+      <h2 class="title">${g.timeUp ? "Time's up. Vote!" : "Who's out?"}</h2>
+      <p class="hint">On three, everyone points. Tap whoever got the most votes, or skip if there's a tie nobody will break.</p>
+    </section>
+    <div class="vote" role="group" aria-label="Players still alive">
+      ${this.aliveIdx(g).map(i => `<button data-act="pick" data-i="${i}" data-mark="Out?" aria-pressed="${ui.sel === i}">${esc(g.roles[i].name)}</button>`).join("")}
+    </div>
+    <button class="btn btn-danger" data-act="wwVote" ${ui.sel == null ? "disabled" : ""}>${ui.sel == null ? "Pick a player" : `Vote out ${esc(g.roles[ui.sel].name)}`}</button>
+    <button class="btn btn-ghost" data-act="wwSkipVote">No one goes today</button>`;
+  },
+  v_voted() {
+    const g = S.ww.game, i = g.votedOut;
+    return `${this.header(`Day ${g.night}`)}
+    ${i != null ? `<div class="dossier flip" style="margin-top:12px">
+        <span class="eyebrow">Voted out</span>
+        <span class="who">${esc(g.roles[i].name)}</span>
+        ${S.ww.reveal ? `<span class="note">was ${g.roles[i].role === "wolf" || g.roles[i].role === "vill" ? "a" : "the"}</span><span class="stamp ${g.roles[i].role === "wolf" ? "spy" : "civ"}">${WW_ROLE[g.roles[i].role].name.toUpperCase()}</span>` : `<span class="note">leaves the village.</span>`}
+      </div>` : `<div class="banner">No one goes</div>`}
+    ${this.shotNote()}
+    <button class="btn btn-main" data-act="wwNextNight" ${ui.busy ? "disabled" : ""}>${ui.busy ? "Listen to the narrator&hellip;" : `Night ${g.night + 1} falls`}</button>`;
+  },
+  v_over() {
+    const g = S.ww.game;
+    return `${this.header("Game over")}
+    <div class="banner" style="${g.winner === "wolves" ? "color:var(--spy)" : "color:var(--civ)"}">${g.winner === "wolves" ? "Werewolves win" : "Village wins"}</div>
+    <section class="section"><span class="eyebrow">Who was who</span>
+      <ol class="order">${g.roles.map(r => `<li>${r.alive ? esc(r.name) : `<s>${esc(r.name)}</s>`}<span class="pill ${WW_ROLE[r.role].pill}">${WW_ROLE[r.role].name}</span></li>`).join("")}</ol>
+    </section>
+    <section class="section"><span class="eyebrow">Werewolf scores</span>${scoreTable("ww", g.awards)}</section>
+    <div class="btn-row">
+      <button class="btn btn-ghost" data-act="hub">Game Night</button>
+      <button class="btn btn-main" data-act="wwAgain">Play again</button>
+    </div>`;
+  },
+  shotNote() {
+    const g = S.ww.game;
+    if (!g.shot) return "";
+    const t = g.roles[g.shot.t];
+    return `<p class="out-chip" style="align-self:center">The Hunter shot <b style="color:var(--fg)">&nbsp;${esc(t.name)}</b>${S.ww.reveal ? `<span class="pill ${WW_ROLE[t.role].pill}">${WW_ROLE[t.role].name}</span>` : ""}</p>`;
+  },
+  graveyard() {
+    const g = S.ww.game, dead = g.roles.filter(r => !r.alive);
+    if (!dead.length) return "";
+    return `<section class="section"><span class="eyebrow">Graveyard</span>
+      <div class="out-list">${dead.map(r => `<span class="out-chip"><s>${esc(r.name)}</s>${S.ww.reveal ? `<span class="pill ${WW_ROLE[r.role].pill}">${WW_ROLE[r.role].name}</span>` : ""}</span>`).join("")}</div>
+    </section>`;
+  },
+
+  act(a, d) {
+    const C = S.ww, g = C.game;
+    switch (a) {
+      case "wwStep": C[d.k] += +d.d; break;
+      case "wwToggle": C[d.k] = !C[d.k]; break;
+      case "wwVoice": C.voice = d.v; break;
+      case "wwSfx": C.sfx = d.v === "1"; break;
+      case "wwMute":
+        C.muted = !C.muted;
+        if (C.muted) { Voice.hush(); Sfx.stopAll(); }
+        else { primeAudio(); Voice.unlock(); if (g && g.phase === "night") { Sfx.crickets(true); if (g.steps[g.si] === "wolves") Sfx.heartbeat(true); } }
+        break;
+      case "wwTest":
+        primeAudio(); Voice.unlock(); C.muted = false;
+        Sfx.howl(); setTimeout(() => Voice.say(this.L().test), 1500);
+        break;
+      case "wwStart": primeAudio(); Voice.unlock(); this.start(); return "done";
+      case "wwNightIntro": g.phase = "nightIntro"; top(); break;
+      case "wwStartNight": this.startNight(); return "done";
+      case "wwRepeat": Voice.say(this.L().open[g.steps[g.si]]); return "done";
+      case "wwChoose": {
+        const step = g.steps[g.si], i = ui.sel;
+        if (i == null) return "done";
+        if (step === "wolves") { g.victim = i; save(); this.endStep(wwSeq); }
+        else if (step === "doc") { g.saved = i; g.lastSaved = i; save(); this.endStep(wwSeq); }
+        else if (step === "seer") { g.seerSaw = i; ui.seerResult = i; save(); render(); }
+        return "done";
+      }
+      case "wwEndStep":
+        if (g.steps[g.si] === "doc" && !this.alive(g, "doc")) g.lastSaved = null;
+        this.endStep(++wwSeq); return "done";
+      case "wwShoot": if (ui.sel != null) this.hunterShoots(ui.sel); return "done";
+      case "wwToDay": this.stop(); Voice.unlock(); if (!this.settle()) this.toDay(); return "done";
+      case "wwPause": primeAudio(); g.running ? SF.pause(g) : SF.resume(g); break;
+      case "wwToVote": SF.pause(g); Voice.hush(); g.phase = "vote"; ui.sel = null; top(); break;
+      case "wwVote": if (ui.sel != null) this.vote(ui.sel); return "done";
+      case "wwSkipVote": this.vote(null); return "done";
+      case "wwNextNight": this.stop(); if (this.settle()) return "done"; g.night++; g.phase = "nightIntro"; ui.sel = null; top(); break;
+      case "wwAgain": this.stop(); C.game = null; this.start(); return "done";
+      default: return false;
+    }
+  }
+};
+
+const GAMES = { uc: UC, sf: SF, ww: WW };
 const curGame = () => S.screen === "hub" ? null : S[S.screen].game;
 
 // =====================================================================
@@ -1064,13 +1748,17 @@ const curGame = () => S.screen === "hub" ? null : S[S.screen].game;
 let ticker = null;
 function syncTicker() {
   clearInterval(ticker); ticker = null;
-  const g = S.sf.game;
-  if (!g || g.phase !== "play" || !g.running) return;
+  const g = curGame();
+  if (!g || !g.running) return;
+  let onEnd, low = 60000;
+  if (S.screen === "sf" && g.phase === "play") onEnd = () => SF.timeUp();
+  else if (S.screen === "ww" && g.phase === "day") { onEnd = () => WW.timeUp(); low = 30000; }
+  else return;
   const tick = () => {
     const ms = SF.left(g);
-    const el = document.getElementById("sf-timer");
-    if (el) { el.textContent = SF.fmt(ms); el.classList.toggle("low", ms < 60000); }
-    if (ms <= 0) { clearInterval(ticker); ticker = null; SF.timeUp(); }
+    const el = document.getElementById("timer");
+    if (el) { el.textContent = SF.fmt(ms); el.classList.toggle("low", ms < low); }
+    if (ms <= 0) { clearInterval(ticker); ticker = null; onEnd(); }
   };
   tick();
   if (ticker === null && g.running) ticker = setInterval(tick, 250);
@@ -1116,17 +1804,17 @@ function act(a, d = {}) {
   const g = curGame();
   switch (a) {
     case "add":
-      S.players.push(""); UC.resetCounts(); ui.err = ""; save(); render();
+      S.players.push(""); UC.resetCounts(); WW.autoWolves(); ui.err = ""; save(); render();
       document.getElementById("p-" + (S.players.length - 1))?.focus();
       return;
-    case "rm": S.players.splice(+d.i, 1); UC.resetCounts(); ui.err = ""; break;
+    case "rm": S.players.splice(+d.i, 1); UC.resetCounts(); WW.autoWolves(); ui.err = ""; break;
     case "open": S.screen = d.g; resetUi(); top(); break;
-    case "hub": S.screen = "hub"; resetUi(); top(); break;
+    case "hub": WW.stop(); S.screen = "hub"; resetUi(); top(); break;
     case "reset":
-      if (ui.confirm === "reset") { S.scores = { uc: {}, sf: {} }; ui.confirm = null; } else ui.confirm = "reset";
+      if (ui.confirm === "reset") { S.scores = { uc: {}, sf: {}, ww: {} }; ui.confirm = null; } else ui.confirm = "reset";
       break;
     case "quit":
-      if (ui.confirm === "quit") { S[S.screen].game = null; resetUi(); top(); } else ui.confirm = "quit";
+      if (ui.confirm === "quit") { WW.stop(); S[S.screen].game = null; resetUi(); top(); } else ui.confirm = "quit";
       break;
     case "peek": ui.peek = { i: +d.i, shown: false }; keepAwake(); break;
     case "show": ui.peek.shown = true; break;
