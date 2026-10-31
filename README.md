@@ -4,7 +4,7 @@ Pass-and-play party games for one phone. Enter the players once, then pick a gam
 
 - **Undercover (Mr. White):** everyone gets a secret word, a few get a slightly different one, and Mr. White gets nothing. Give clues, vote people out. English and Bahasa Indonesia word packs, or type your own pair.
 - **Spyfall:** everyone sees the same location and a role, except the spy. Ask each other questions against the clock, call a vote, or let the spy guess. English (30) and Indonesia (21) location packs.
-- **Werewolf:** the phone is the narrator. It speaks each night step out loud (English or Bahasa Indonesia, using the phone's built-in voice) with synthesized sound effects: a howl at nightfall, crickets, a heartbeat while the wolves choose, a morning bell and a thud for each death. Roles: Werewolves, Villagers, Seer, Doctor, Hunter.
+- **Werewolf:** the phone is the narrator. It speaks each night step out loud (English or Bahasa Indonesia, using the phone's built-in voice) with synthesized sound effects: a howl at nightfall, crickets, a heartbeat while the wolves choose, a morning bell and a thud for each death. 15 roles: Werewolf, Wolf Cub, Minion, Villager, Seer, Apprentice Seer, Doctor, Witch, Hunter, Cupid, Mayor, Prince, Elder, Lycan and Jester, with Classic, Recommended and Chaos presets.
 
 ## Install it as an app (PWA)
 

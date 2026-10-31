@@ -228,6 +228,18 @@ details .locs { padding-bottom: 12px; }
 .sun { width: 90px; height: 90px; border-radius: 50%; align-self: center; background: radial-gradient(circle, #ffe7a3 0%, #f0b443 70%); box-shadow: 0 0 60px 16px rgba(240,180,67,.3); }
 .ww-line { font-family: var(--f-head); font-weight: 800; font-size: clamp(1.5rem, 7vw, 2rem); line-height: 1.15; text-transform: uppercase; text-wrap: balance; min-height: 2.3em; }
 .score th { font-size: .68rem; letter-spacing: .06em; }
+.rgroup { display: flex; flex-direction: column; gap: 8px; }
+.rgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.rchip { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 10px 12px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--desk); min-width: 0; }
+.rchip b { font-family: var(--f-head); font-weight: 800; text-transform: uppercase; letter-spacing: .03em; font-size: 1.02rem; color: var(--muted); }
+.rchip span { font-size: .8rem; color: var(--muted); line-height: 1.3; }
+.rchip[aria-pressed=true] { border-color: var(--lamp); background: color-mix(in srgb, var(--lamp) 14%, var(--desk)); }
+.rchip[aria-pressed=true] b { color: var(--fg); }
+.rchip[disabled] { opacity: .35; cursor: not-allowed; }
+.deaths { display: flex; flex-direction: column; gap: 22px; margin-top: 10px; }
+.rguide { list-style: none; padding-left: 0 !important; gap: 12px !important; }
+.rguide li { color: var(--muted); }
+.rguide .pill { margin-left: 6px; vertical-align: 2px; }
 
 @media (prefers-reduced-motion: reduce) { .flip { animation: none; } .btn { transition: none; } }
 </style>
@@ -390,7 +402,7 @@ function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e
 
 let S = load();
 let ui;
-function resetUi() { ui = { peek: null, sel: null, guess: null, guessText: "", err: "", confirm: null, guesser: null, loc: null, busy: false, line: "", seerResult: null, returning: false }; }
+function resetUi() { ui = { peek: null, sel: null, guess: null, guessText: "", err: "", confirm: null, guesser: null, loc: null, busy: false, line: "", seerResult: null, returning: false, sels: [], wstage: null, wheal: null, wpoison: null }; }
 resetUi();
 
 // =====================================================================
@@ -577,7 +589,7 @@ const Hub = {
         </button>
         <button class="game g-ww" data-act="open" data-g="ww">
           <span class="gname">WEREWOLF</span>
-          <span class="gdesc">Werewolves hunt the village by night; the village hunts them by day. The phone is the narrator, with voice and sound.</span>
+          <span class="gdesc">Werewolves hunt the village by night; the village hunts them by day. 15 roles, and the phone narrates with voice and sound.</span>
           <span class="gmeta">5&ndash;18 players &middot; 20&ndash;40 min ${S.ww.game ? `<span class="pill">In progress</span>` : ""}</span>
           <span class="go">${S.ww.game ? "Resume" : "Play"} &rsaquo;</span>
         </button>
@@ -1085,59 +1097,125 @@ const SF = {
 // =====================================================================
 
 const WW_ROLE = {
-  wolf:   { name: "Werewolf", pill: "spy", team: "wolf",
+  wolf:   { name: "Werewolf", art: "a", team: "wolf", short: "Kills at night with the pack.",
             desc: "Each night, you and your pack silently pick someone to eliminate. By day, blend in and steer suspicion elsewhere." },
-  vill:   { name: "Villager", pill: "civ", team: "village",
+  cub:    { name: "Wolf Cub", art: "the", team: "wolf", short: "If killed, the wolves kill two next night.",
+            desc: "You hunt with the werewolves. If you die, your pack gets furious and kills two victims the following night." },
+  minion: { name: "Minion", art: "the", team: "wolf", short: "Knows the wolves. They don't know you.",
+            desc: "You're on the werewolves' side and you know who they are, but they don't know you. You win if they win. The Seer sees you as an ordinary villager." },
+  vill:   { name: "Villager", art: "a", team: "village", short: "",
             desc: "No powers, just your wits. Listen, argue, and vote out the werewolves before they eat everyone." },
-  seer:   { name: "Seer", pill: "", team: "village",
+  seer:   { name: "Seer", art: "the", team: "village", short: "Checks one player a night.",
             desc: "Each night, pick one player and learn whether they're a werewolf. Share what you know carefully: the wolves will come for you." },
-  doc:    { name: "Doctor", pill: "", team: "village",
+  appr:   { name: "Apprentice Seer", art: "the", team: "village", short: "Takes over if the Seer dies.",
+            desc: "While the Seer is alive, you just watch. If the Seer dies, you take over and check one player each night." },
+  doc:    { name: "Doctor", art: "the", team: "village", short: "Protects one player a night.",
             desc: "Each night, pick one player to protect from the werewolves. You can protect yourself, but not the same person two nights in a row." },
-  hunter: { name: "Hunter", pill: "", team: "village",
-            desc: "If you're eliminated, by the wolves or by vote, you immediately take one player down with you." }
+  witch:  { name: "Witch", art: "the", team: "village", short: "One healing potion, one poison.",
+            desc: "Each night you see who the werewolves attacked. Once per game you can save them with your healing potion, and once per game you can poison anyone you like." },
+  hunter: { name: "Hunter", art: "the", team: "village", short: "Shoots someone on the way out.",
+            desc: "If you're eliminated, by the wolves or by vote, you immediately take one player down with you." },
+  cupid:  { name: "Cupid", art: "", team: "village", short: "Makes two players fall in love.",
+            desc: "On the first night, choose two players to fall in love (you can pick yourself). If one lover dies, the other dies of a broken heart. If the lovers are on opposite sides and end up the last two alive, they win together." },
+  mayor:  { name: "Mayor", art: "the", team: "village", short: "Vote counts twice.",
+            desc: "You're a villager whose vote counts twice. Reveal yourself whenever you like, but the wolves will be watching." },
+  prince: { name: "Prince", art: "the", team: "village", short: "Survives being voted out once.",
+            desc: "If the village votes you out, you reveal yourself and survive. It only works once." },
+  elder:  { name: "Elder", art: "the", team: "village", short: "Survives the first werewolf attack.",
+            desc: "You're tough. The first time the werewolves attack you, you survive. Poison still works on you." },
+  lycan:  { name: "Lycan", art: "the", team: "village", short: "Looks like a wolf to the Seer.",
+            desc: "You're on the village's side, but you carry the curse: the Seer sees you as a werewolf. Good luck explaining that." },
+  jester: { name: "Jester", art: "the", team: "neutral", short: "Wins by getting voted out.",
+            desc: "You're on nobody's side. Your only goal is to get the village to vote you out. If they do, you win alone. Dying at night doesn't count." }
 };
+const WW_VILLAGE_ROLES = ["seer", "appr", "doc", "witch", "hunter", "cupid", "mayor", "prince", "elder", "lycan"];
+const WW_WOLF_ROLES = ["cub", "minion"];
+const WW_NEUTRAL_ROLES = ["jester"];
+const WW_SPECIALS = [...WW_VILLAGE_ROLES, ...WW_WOLF_ROLES, ...WW_NEUTRAL_ROLES];
 
 // Narrator script. Role names here are spoken, so they follow the narration language.
 const WW_LINES = {
   en: {
     lang: "en-US",
     night: n => `Night ${n}. Everyone, close your eyes.`,
-    open: { wolves: "Werewolves, open your eyes. Silently choose your victim.", seer: "Seer, open your eyes. Choose someone to investigate.", doc: "Doctor, open your eyes. Choose someone to protect tonight." },
-    close: { wolves: "Werewolves, close your eyes.", seer: "Seer, close your eyes.", doc: "Doctor, close your eyes." },
+    open: {
+      cupid: "Cupid, open your eyes. Choose two players who will fall in love.",
+      lovers: "Lovers, open your eyes, and look at the phone to see who you are bound to.",
+      wolves: "Werewolves, open your eyes. Silently choose your victim.",
+      witch: "Witch, open your eyes. See who was attacked, and decide whether to use your potions.",
+      seer: "Seer, open your eyes. Choose someone to investigate.",
+      appr: "Apprentice Seer, open your eyes.",
+      doc: "Doctor, open your eyes. Choose someone to protect tonight."
+    },
+    openRage: "Werewolves, open your eyes. Your cub is dead, and you are furious. Tonight, choose two victims.",
+    close: {
+      cupid: "Cupid, close your eyes.", lovers: "Lovers, close your eyes.", wolves: "Werewolves, close your eyes.",
+      witch: "Witch, close your eyes.", seer: "Seer, close your eyes.", appr: "Apprentice Seer, close your eyes.", doc: "Doctor, close your eyes."
+    },
     wake: "Everyone, wake up. The sun is rising.",
-    killed: x => `Last night, ${x} was killed by the werewolves.`,
+    death: {
+      wolves: x => `Last night, ${x} was killed by the werewolves.`,
+      poison: x => `${x} was found poisoned.`,
+      heart: x => `${x} died of a broken heart.`,
+      hunter: x => `The Hunter took ${x} down.`,
+      vote: x => `The village has voted out ${x}.`
+    },
     nobody: "Good news. Nobody died last night.",
     was: (x, r) => `${x} was ${r}.`,
     hunter: x => `${x} was the Hunter. Hunter, take one player down with you.`,
-    shot: x => `The Hunter took ${x} down.`,
+    prince: x => `${x} is the Prince, and cannot be exiled.`,
+    jester: x => `${x} was the Jester. That's exactly what they wanted. The Jester wins!`,
     talk: "Discuss. Who among you are the werewolves?",
     timeUp: "Time's up. Vote now.",
-    voted: x => `The village has voted out ${x}.`,
     skip: "The village could not agree. Nobody is eliminated today.",
     village: "The last werewolf is dead. The village wins!",
     wolves: "The werewolves have taken over the village. Werewolves win!",
+    lovers: "Only the lovers remain. Love conquers all. The lovers win!",
     test: "Night falls on the village. Everyone, close your eyes.",
-    roles: { wolf: "a Werewolf", vill: "a Villager", seer: "the Seer", doc: "the Doctor", hunter: "the Hunter" }
+    roles: { wolf: "a Werewolf", cub: "the Wolf Cub", minion: "the Minion", vill: "a Villager", seer: "the Seer", appr: "the Apprentice Seer",
+             doc: "the Doctor", witch: "the Witch", hunter: "the Hunter", cupid: "Cupid", mayor: "the Mayor", prince: "the Prince",
+             elder: "the Elder", lycan: "the Lycan", jester: "the Jester" }
   },
   id: {
     lang: "id-ID",
     night: n => `Malam ke-${n}. Semua, pejamkan mata.`,
-    open: { wolves: "Serigala, buka mata kalian. Pilih mangsa kalian tanpa suara.", seer: "Peramal, buka matamu. Pilih satu orang untuk diterawang.", doc: "Dokter, buka matamu. Pilih satu orang untuk dilindungi malam ini." },
-    close: { wolves: "Serigala, pejamkan mata.", seer: "Peramal, pejamkan mata.", doc: "Dokter, pejamkan mata." },
+    open: {
+      cupid: "Cupid, buka matamu. Pilih dua orang yang akan jatuh cinta.",
+      lovers: "Sepasang kekasih, buka mata kalian, dan lihat layar untuk tahu pasangan kalian.",
+      wolves: "Serigala, buka mata kalian. Pilih mangsa kalian tanpa suara.",
+      witch: "Penyihir, buka matamu. Lihat siapa yang diserang, lalu putuskan apakah mau memakai ramuanmu.",
+      seer: "Peramal, buka matamu. Pilih satu orang untuk diterawang.",
+      appr: "Murid Peramal, buka matamu.",
+      doc: "Dokter, buka matamu. Pilih satu orang untuk dilindungi malam ini."
+    },
+    openRage: "Serigala, buka mata kalian. Anak serigala kalian sudah mati, dan kalian murka. Malam ini, pilih dua mangsa.",
+    close: {
+      cupid: "Cupid, pejamkan mata.", lovers: "Sepasang kekasih, pejamkan mata.", wolves: "Serigala, pejamkan mata.",
+      witch: "Penyihir, pejamkan mata.", seer: "Peramal, pejamkan mata.", appr: "Murid Peramal, pejamkan mata.", doc: "Dokter, pejamkan mata."
+    },
     wake: "Semua, bangun. Matahari sudah terbit.",
-    killed: x => `Tadi malam, ${x} tewas dimangsa serigala.`,
+    death: {
+      wolves: x => `Tadi malam, ${x} tewas dimangsa serigala.`,
+      poison: x => `${x} ditemukan tewas diracun.`,
+      heart: x => `${x} meninggal karena patah hati.`,
+      hunter: x => `Pemburu menembak ${x}.`,
+      vote: x => `Warga desa memutuskan mengusir ${x}.`
+    },
     nobody: "Kabar baik. Tadi malam tidak ada yang tewas.",
     was: (x, r) => `${x} adalah ${r}.`,
     hunter: x => `${x} adalah Pemburu. Pemburu, bawa satu orang bersamamu.`,
-    shot: x => `Pemburu menembak ${x}.`,
+    prince: x => `${x} adalah Pangeran, dan tidak bisa diusir.`,
+    jester: x => `${x} adalah Badut. Justru itu yang dia mau. Badut menang!`,
     talk: "Silakan berdiskusi. Siapa serigalanya?",
     timeUp: "Waktu habis. Saatnya memilih.",
-    voted: x => `Warga desa memutuskan mengusir ${x}.`,
     skip: "Warga tidak sepakat. Hari ini tidak ada yang diusir.",
     village: "Serigala terakhir sudah mati. Warga desa menang!",
     wolves: "Serigala menguasai desa. Serigala menang!",
+    lovers: "Hanya sepasang kekasih yang tersisa. Cinta mengalahkan segalanya. Sepasang kekasih menang!",
     test: "Malam tiba di desa. Semua, pejamkan mata.",
-    roles: { wolf: "Serigala", vill: "Warga", seer: "Peramal", doc: "Dokter", hunter: "Pemburu" }
+    roles: { wolf: "Serigala", cub: "Anak Serigala", minion: "Antek Serigala", vill: "Warga", seer: "Peramal", appr: "Murid Peramal",
+             doc: "Dokter", witch: "Penyihir", hunter: "Pemburu", cupid: "Cupid", mayor: "Kepala Desa", prince: "Pangeran",
+             elder: "Tetua", lycan: "Lycan", jester: "Badut" }
   }
 };
 
@@ -1298,22 +1376,79 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
 const WW_RETURN_MS = 6000;
 let wwSeq = 0; // bumps whenever a narrated sequence should stop (quit, skip ahead, leave the game)
 
+// Which role acts in each night step. Wolves and lovers are handled separately.
+const WW_STEP_OWNER = { cupid: "cupid", witch: "witch", seer: "seer", appr: "appr", doc: "doc" };
+const WW_STEP_TITLE = { cupid: "Cupid", lovers: "Lovers", wolves: "Werewolves", witch: "Witch", seer: "Seer", appr: "Apprentice Seer", doc: "Doctor" };
+const WW_CAUSE = { wolves: "Killed by the werewolves", poison: "Poisoned", heart: "Died of a broken heart", hunter: "Shot by the Hunter", vote: "Voted out" };
+const WW_GAME_VERSION = 2;
+
 const WW = {
+  // ---- setup rules ----
   defaults(n) { return n <= 5 ? 1 : n <= 8 ? 2 : n <= 12 ? 3 : 4; },
-  specials(C) { return (C.seer ? 1 : 0) + (C.doc ? 1 : 0) + (C.hunter ? 1 : 0); },
-  autoWolves() { const n = S.players.length; S.ww.wolves = Math.max(1, Math.min(this.defaults(n), Math.floor((n - 1) / 2))); },
-  valid(n, C) { return n >= 5 && C.wolves >= 1 && C.wolves * 2 < n && C.wolves + this.specials(C) <= n; },
+  on(C) {
+    if (!C.on) C.on = { seer: C.seer !== false, doc: C.doc !== false, hunter: !!C.hunter };
+    return C.on;
+  },
+  count(C) { const on = this.on(C); return WW_SPECIALS.filter(k => on[k]).length; },
+  killers(C) { return C.wolves + (this.on(C).cub ? 1 : 0); },
+  valid(n, C) { return n >= 5 && C.wolves >= 1 && this.killers(C) * 2 < n && C.wolves + this.count(C) <= n; },
+  // Switches roles off, least essential first, until the setup fits the table.
+  fit(C, n) {
+    const on = this.on(C);
+    for (const k of ["elder", "prince", "lycan", "mayor", "appr", "cupid", "minion", "jester", "cub", "witch", "hunter", "doc", "seer"]) {
+      if (n < 5 || this.valid(n, C)) break;
+      on[k] = false;
+    }
+    while (n >= 5 && !this.valid(n, C) && C.wolves > 1) C.wolves--;
+  },
+  autoWolves() {
+    const C = S.ww, n = S.players.length;
+    C.wolves = Math.max(1, Math.min(this.defaults(n), Math.floor((n - 1) / 2)));
+    this.fit(C, n);
+  },
+  preset(kind) {
+    const C = S.ww, n = S.players.length;
+    let w, roles;
+    if (kind === "classic") { w = this.defaults(n); roles = ["seer", "doc"]; }
+    else if (kind === "chaos") { w = n <= 8 ? 1 : n <= 12 ? 2 : 3; roles = WW_SPECIALS.slice(); }
+    else if (n <= 6) { w = 1; roles = ["seer", "doc"]; }
+    else if (n <= 8) { w = 2; roles = ["seer", "doc", "hunter"]; }
+    else if (n <= 10) { w = 2; roles = ["seer", "doc", "witch", "hunter", "jester"]; }
+    else if (n <= 12) { w = 2; roles = ["seer", "doc", "witch", "hunter", "cub", "cupid", "jester", "mayor"]; }
+    else { w = 3; roles = ["seer", "appr", "doc", "witch", "hunter", "cub", "cupid", "minion", "jester", "prince", "elder"]; }
+    C.wolves = Math.max(1, Math.min(w, Math.floor((n - 1) / 2)));
+    C.on = {}; roles.forEach(k => { C.on[k] = true; });
+    this.fit(C, n);
+  },
+
+  // ---- role helpers ----
+  team(role) { return WW_ROLE[role].team; },
+  isWolf(role) { return role === "wolf" || role === "cub"; },
+  looksWolf(role) { return role === "wolf" || role === "cub" || role === "lycan"; },
+  pill(role) { const t = this.team(role); return t === "wolf" ? "spy" : t === "neutral" ? "mw" : role === "vill" ? "civ" : ""; },
+  stampClass(role) { const t = this.team(role); return t === "wolf" ? "spy" : t === "neutral" ? "mw" : "civ"; },
   L() { return Voice.lines(); },
   alive(g, role) { return g.roles.some(r => r.alive && r.role === role); },
   inGame(g, role) { return g.roles.some(r => r.role === role); },
   aliveIdx(g) { return g.roles.map((r, i) => i).filter(i => g.roles[i].alive); },
+  stepActive(g, step) {
+    if (step === "wolves") return g.roles.some(r => r.alive && this.isWolf(r.role));
+    if (step === "lovers") return !!g.lovers;
+    return this.alive(g, WW_STEP_OWNER[step]);
+  },
   secret(g, r) {
     const R = WW_ROLE[r.role];
-    const pack = r.role === "wolf" ? g.roles.filter(x => x.role === "wolf" && x !== r).map(x => x.name) : [];
-    return `<span class="note">You are ${r.role === "wolf" ? "a" : r.role === "vill" ? "a" : "the"}</span>
-      <span class="stamp ${r.role === "wolf" ? "spy" : "civ"}" style="margin:8px 0">${R.name.toUpperCase()}</span>
+    let extra = "";
+    if (this.isWolf(r.role)) {
+      const pack = g.roles.filter(x => x !== r && this.isWolf(x.role)).map(x => esc(x.name) + (x.role === "cub" ? " (cub)" : ""));
+      extra = pack.length ? `Your pack: ${pack.join(", ")}` : "You hunt alone.";
+    } else if (r.role === "minion") {
+      extra = `The werewolves are: ${g.roles.filter(x => this.isWolf(x.role)).map(x => esc(x.name)).join(", ")}`;
+    }
+    return `<span class="note">You are${R.art ? " " + R.art : ""}</span>
+      <span class="stamp ${this.stampClass(r.role)}" style="margin:8px 0">${R.name.toUpperCase()}</span>
       <p class="note">${R.desc}</p>
-      ${r.role === "wolf" ? `<p class="note"><b>${pack.length ? `Your pack: ${pack.map(esc).join(", ")}` : "You hunt alone."}</b></p>` : ""}`;
+      ${extra ? `<p class="note"><b>${extra}</b></p>` : ""}`;
   },
   stop() { wwSeq++; Voice.hush(); Sfx.stopAll(); },
 
@@ -1322,18 +1457,20 @@ const WW = {
     const pe = playerError(); if (pe) return fail(pe);
     const n = S.players.length;
     if (n < 5) return fail("Werewolf needs at least 5 players. Add more on the Game Night screen.");
-    if (C.wolves == null || !this.valid(n, C)) this.autoWolves();
-    if (!this.valid(n, C)) return fail("Too many special roles for this many players. Switch one off.");
-    const deck = shuffle([
-      ...Array(C.wolves).fill("wolf"),
-      ...(C.seer ? ["seer"] : []), ...(C.doc ? ["doc"] : []), ...(C.hunter ? ["hunter"] : []),
-      ...Array(n - C.wolves - this.specials(C)).fill("vill")
-    ]);
+    if (C.wolves == null) this.autoWolves();
+    if (!this.valid(n, C)) this.fit(C, n);
+    if (!this.valid(n, C)) return fail("That role mix doesn't fit this many players. Switch a role off.");
+    const on = this.on(C);
+    const specials = WW_SPECIALS.filter(k => on[k]);
+    const deck = shuffle([...Array(C.wolves).fill("wolf"), ...specials, ...Array(n - C.wolves - specials.length).fill("vill")]);
     C.game = {
+      v: WW_GAME_VERSION,
       roles: S.players.map((name, i) => ({ name, role: deck[i], alive: true, seen: false })),
-      phase: "reveal", night: 1, steps: [], si: 0,
-      victim: null, saved: null, lastSaved: null, seerSaw: null,
-      report: [], shot: null, hunterUsed: false, hunter: null, back: null, votedOut: undefined,
+      phase: "reveal", night: 1, steps: [], si: 0, kills: 1,
+      targets: [], saved: null, heal: null, poison: null, lastSaved: null,
+      healUsed: false, poisonUsed: false, rage: false, elderHit: false, princeUsed: false, lovers: null,
+      report: [], pendingHunter: null, hunterUsed: false, hunter: null, back: null,
+      votedOut: undefined, princeSaved: false,
       remaining: 0, endAt: 0, running: false, timeUp: false, winner: null, awards: {}
     };
     resetUi(); keepAwake(); save(); render(); top();
@@ -1344,9 +1481,14 @@ const WW = {
     const g = S.ww.game, id = ++wwSeq;
     primeAudio(); Voice.unlock();
     if (!this.alive(g, "doc")) g.lastSaved = null;
-    g.phase = "night"; g.si = -1; g.victim = null; g.saved = null; g.seerSaw = null; g.shot = null;
-    g.steps = ["wolves", ...(this.inGame(g, "seer") ? ["seer"] : []), ...(this.inGame(g, "doc") ? ["doc"] : [])];
-    ui.busy = true; ui.sel = null; save(); render(); top();
+    g.phase = "night"; g.si = -1; g.targets = []; g.saved = null; g.heal = null; g.poison = null; g.report = [];
+    g.kills = g.rage ? 2 : 1; g.rage = false;
+    g.steps = [
+      ...(g.night === 1 && this.inGame(g, "cupid") ? ["cupid", "lovers"] : []),
+      "wolves",
+      ...["witch", "seer", "appr", "doc"].filter(s => this.inGame(g, WW_STEP_OWNER[s]))
+    ];
+    ui.busy = true; ui.sels = []; save(); render(); top();
     Sfx.howl(); Sfx.crickets(true);
     await wait(1200); if (id !== wwSeq) return;
     await Voice.say(this.L().night(g.night)); if (id !== wwSeq) return;
@@ -1355,105 +1497,133 @@ const WW = {
   },
   async nextStep(id) {
     const g = S.ww.game;
-    g.si++; ui.sel = null; ui.seerResult = null;
+    g.si++; ui.sels = []; ui.seerResult = null; ui.wstage = null; ui.wheal = null; ui.wpoison = null;
     if (g.si >= g.steps.length) return this.dawn(id);
-    const step = g.steps[g.si];
+    const step = g.steps[g.si], L = this.L();
     ui.busy = true; save(); render();
     // Ambience ends before a role is called; from here until the phone is back in the middle, nothing plays.
     Sfx.stopAll();
     if (step === "wolves" && Sfx.ok()) { Sfx.beats(3); await wait(2700); if (id !== wwSeq) return; Sfx.stopAll(); }
-    await Voice.say(this.L().open[step]); if (id !== wwSeq) return;
+    await Voice.say(step === "wolves" && g.kills > 1 ? L.openRage : L.open[step]); if (id !== wwSeq) return;
     Sfx.stopAll();
     ui.busy = false; render();
-    const who = { wolves: "wolf", seer: "seer", doc: "doc" }[step];
-    if (!this.alive(g, who)) {
+    if (step === "lovers") {
+      // The phone stays in the middle; the lovers just look at the screen.
+      await wait(7000); if (id !== wwSeq) return;
+      return this.endStep(id, true);
+    }
+    if (!this.stepActive(g, step)) {
       // The role is dead, but the narrator still calls it and waits about as long as a real turn.
       await wait(5000 + rand(8000)); if (id !== wwSeq) return;
       this.endStep(id);
     }
   },
-  async endStep(id) {
+  async endStep(id, stayedInMiddle) {
     const g = S.ww.game, step = g.steps[g.si];
     Sfx.stopAll();
-    ui.busy = true; ui.returning = true; ui.seerResult = null; render();
-    const until = Date.now() + WW_RETURN_MS;
-    const count = setInterval(() => {
-      const el = document.getElementById("ww-count");
-      if (el) el.textContent = Math.max(0, Math.ceil((until - Date.now()) / 1000));
-    }, 250);
-    await wait(WW_RETURN_MS);
-    clearInterval(count);
-    if (id !== wwSeq) return;
-    ui.returning = false; render();
+    ui.seerResult = null;
+    if (!stayedInMiddle) {
+      ui.busy = true; ui.returning = true; render();
+      const until = Date.now() + WW_RETURN_MS;
+      const count = setInterval(() => {
+        const el = document.getElementById("ww-count");
+        if (el) el.textContent = Math.max(0, Math.ceil((until - Date.now()) / 1000));
+      }, 250);
+      await wait(WW_RETURN_MS);
+      clearInterval(count);
+      if (id !== wwSeq) return;
+    }
+    ui.busy = true; ui.returning = false; render();
     Sfx.crickets(true);
     await Voice.say(this.L().close[step]); if (id !== wwSeq) return;
     await wait(1400); if (id !== wwSeq) return;
     this.nextStep(id);
   },
 
-  // ---- morning ----
-  kill(i) { S.ww.game.roles[i].alive = false; },
+  // ---- deaths ----
+  // Kills everyone in the list plus whoever dies with them (lovers). Returns who actually died, in order.
+  cascade(list) {
+    const g = S.ww.game, out = [], q = list.slice();
+    while (q.length) {
+      const d = q.shift(), r = g.roles[d.i];
+      if (!r.alive) continue;
+      r.alive = false; out.push(d);
+      if (r.role === "cub") g.rage = true;
+      if (r.role === "hunter" && !g.hunterUsed) g.pendingHunter = d.i;
+      if (g.lovers && g.lovers.includes(d.i)) {
+        const other = g.lovers[0] === d.i ? g.lovers[1] : g.lovers[0];
+        if (g.roles[other].alive) q.push({ i: other, cause: "heart" });
+      }
+    }
+    return out;
+  },
+  async narrate(ds, id) {
+    const g = S.ww.game, L = this.L();
+    for (const d of ds) {
+      const r = g.roles[d.i];
+      Sfx.thud();
+      await Voice.say(L.death[d.cause](r.name)); if (id !== wwSeq) return false;
+      // The Hunter's own call names the role, so don't say it twice.
+      if (S.ww.reveal && r.role !== "hunter") { await Voice.say(L.was(r.name, L.roles[r.role])); if (id !== wwSeq) return false; }
+    }
+    return true;
+  },
   async dawn(id) {
     const g = S.ww.game, L = this.L();
     Sfx.stopAll();
-    const died = g.victim != null && g.victim !== g.saved ? g.victim : null;
-    if (died != null) this.kill(died);
-    g.report = died != null ? [died] : [];
+    const deaths = [];
+    g.targets.forEach(t => {
+      if (t === g.saved || t === g.heal) return;
+      if (g.roles[t].role === "elder" && !g.elderHit) { g.elderHit = true; return; }
+      deaths.push({ i: t, cause: "wolves" });
+    });
+    if (g.poison != null && !deaths.some(d => d.i === g.poison)) deaths.push({ i: g.poison, cause: "poison" });
+    g.report = this.cascade(deaths);
     g.phase = "dawn"; ui.busy = true; save(); render(); top();
     Sfx.chime();
     await wait(600); if (id !== wwSeq) return;
     await Voice.say(L.wake); if (id !== wwSeq) return;
-    if (died != null) {
-      Sfx.thud();
-      await Voice.say(L.killed(g.roles[died].name)); if (id !== wwSeq) return;
-      if (S.ww.reveal && g.roles[died].role !== "hunter") { await Voice.say(L.was(g.roles[died].name, L.roles[g.roles[died].role])); if (id !== wwSeq) return; }
-    } else {
-      await Voice.say(L.nobody); if (id !== wwSeq) return;
-    }
-    this.afterDeaths(died, "dawn", id);
+    if (!g.report.length) { await Voice.say(L.nobody); if (id !== wwSeq) return; }
+    else if (!(await this.narrate(g.report, id))) return;
+    this.afterDeaths("dawn", id);
   },
-  async afterDeaths(died, back, id) {
+  async afterDeaths(back, id) {
     const g = S.ww.game, L = this.L();
-    if (died != null && g.roles[died].role === "hunter" && !g.hunterUsed) {
-      g.hunterUsed = true; g.hunter = died; g.back = back; g.phase = "hunter";
-      ui.sel = null; ui.busy = true; save(); render(); top();
-      await Voice.say(L.hunter(g.roles[died].name)); if (id !== wwSeq) return;
+    if (g.pendingHunter != null) {
+      g.hunter = g.pendingHunter; g.pendingHunter = null; g.hunterUsed = true; g.back = back; g.phase = "hunter";
+      ui.sels = []; ui.busy = true; save(); render(); top();
+      await Voice.say(L.hunter(g.roles[g.hunter].name)); if (id !== wwSeq) return;
       ui.busy = false; render();
       return;
     }
     const win = this.checkWin();
-    if (win) {
-      this.finish(win);
-      await Voice.say(win === "village" ? L.village : L.wolves);
-      return;
-    }
+    if (win) { this.finish(win); await Voice.say(L[win]); return; }
     g.phase = back; ui.busy = false; save(); render();
   },
   async hunterShoots(t) {
-    const g = S.ww.game, L = this.L(), id = ++wwSeq;
-    this.kill(t); g.shot = { by: g.hunter, t };
+    const g = S.ww.game, id = ++wwSeq;
+    const ds = this.cascade([{ i: t, cause: "hunter" }]);
+    g.report = g.report.concat(ds);
     g.phase = g.back; ui.busy = true; save(); render(); top();
-    Sfx.thud();
-    await Voice.say(L.shot(g.roles[t].name)); if (id !== wwSeq) return;
-    if (S.ww.reveal) { await Voice.say(L.was(g.roles[t].name, L.roles[g.roles[t].role])); if (id !== wwSeq) return; }
-    this.afterDeaths(t, g.back, id);
+    if (!(await this.narrate(ds, id))) return;
+    this.afterDeaths(g.back, id);
   },
   // Resolves a pending Hunter shot or a finished game before moving on. Returns true if it took over.
   settle() {
     const g = S.ww.game;
-    const h = g.roles.findIndex(r => r.role === "hunter" && !r.alive);
-    if (h >= 0 && !g.hunterUsed) {
-      g.hunterUsed = true; g.hunter = h; g.back = g.phase; g.phase = "hunter"; ui.sel = null; ui.busy = false;
-      save(); render(); top(); return true;
+    if (g.pendingHunter != null) {
+      g.hunter = g.pendingHunter; g.pendingHunter = null; g.hunterUsed = true; g.back = g.phase; g.phase = "hunter";
+      ui.sels = []; ui.busy = false; save(); render(); top(); return true;
     }
     const win = this.checkWin();
     if (win) { this.finish(win); return true; }
     return false;
   },
   checkWin() {
-    const g = S.ww.game;
-    let wolves = 0, others = 0;
-    g.roles.forEach(r => { if (r.alive) r.role === "wolf" ? wolves++ : others++; });
+    const g = S.ww.game, alive = g.roles.filter(r => r.alive);
+    const wolves = alive.filter(r => this.isWolf(r.role)).length, others = alive.length - wolves;
+    if (g.lovers && alive.length === 2 && g.lovers.every(i => g.roles[i].alive)
+        && this.team(g.roles[g.lovers[0]].role) !== this.team(g.roles[g.lovers[1]].role)) return "lovers";
     if (wolves === 0) return "village";
     if (wolves >= others) return "wolves";
     return null;
@@ -1462,8 +1632,13 @@ const WW = {
     const g = S.ww.game;
     Sfx.stopAll(); SF.pause(g);
     g.winner = win; g.phase = "over"; g.awards = {};
-    g.roles.forEach(r => {
-      const pts = win === "wolves" ? (r.role === "wolf" ? 3 : 0) : (r.role === "wolf" ? 0 : 2);
+    g.roles.forEach((r, i) => {
+      const t = this.team(r.role);
+      let pts = 0;
+      if (win === "village" && t === "village") pts = 2;
+      if (win === "wolves" && t === "wolf") pts = 3;
+      if (win === "jester" && r.role === "jester") pts = 5;
+      if (win === "lovers" && g.lovers.includes(i)) pts = 4;
       if (pts) { g.awards[r.name] = pts; addScore("ww", r.name, pts); }
     });
     ui.busy = false; save(); render(); top();
@@ -1471,8 +1646,8 @@ const WW = {
 
   // ---- day ----
   async toDay() {
-    const g = S.ww.game, id = ++wwSeq;
-    Voice.hush();
+    const g = S.ww.game;
+    ++wwSeq; Voice.hush();
     g.phase = "day"; g.timeUp = false; g.remaining = S.ww.talk * 60000; g.running = false;
     if (S.ww.talk) SF.resume(g);
     save(); render(); top();
@@ -1480,7 +1655,7 @@ const WW = {
   },
   async timeUp() {
     const g = S.ww.game, id = ++wwSeq;
-    g.running = false; g.remaining = 0; g.timeUp = true; g.phase = "vote"; ui.sel = null;
+    g.running = false; g.remaining = 0; g.timeUp = true; g.phase = "vote"; ui.sels = [];
     alarm(); save(); render(); top();
     await wait(1600); if (id !== wwSeq) return;
     Voice.say(this.L().timeUp);
@@ -1488,22 +1663,35 @@ const WW = {
   async vote(i) {
     const g = S.ww.game, L = this.L(), id = ++wwSeq;
     SF.pause(g);
-    g.votedOut = i; g.shot = null;
-    if (i != null) this.kill(i);
+    g.votedOut = i; g.report = []; g.princeSaved = false;
     g.phase = "voted"; ui.busy = true; save(); render(); top();
-    if (i != null) {
-      Sfx.thud();
-      await Voice.say(L.voted(g.roles[i].name)); if (id !== wwSeq) return;
-      if (S.ww.reveal && g.roles[i].role !== "hunter") { await Voice.say(L.was(g.roles[i].name, L.roles[g.roles[i].role])); if (id !== wwSeq) return; }
-    } else {
+    if (i == null) {
       await Voice.say(L.skip); if (id !== wwSeq) return;
+      return this.afterDeaths("voted", id);
     }
-    this.afterDeaths(i, "voted", id);
+    const r = g.roles[i];
+    if (r.role === "prince" && !g.princeUsed) {
+      g.princeUsed = true; g.princeSaved = true; save(); render();
+      await Voice.say(L.prince(r.name)); if (id !== wwSeq) return;
+      return this.afterDeaths("voted", id);
+    }
+    if (r.role === "jester") {
+      r.alive = false; g.report = [{ i, cause: "vote" }]; save(); render();
+      Sfx.thud();
+      await Voice.say(L.death.vote(r.name)); if (id !== wwSeq) return;
+      this.finish("jester");
+      await Voice.say(L.jester(r.name));
+      return;
+    }
+    g.report = this.cascade([{ i, cause: "vote" }]); save(); render();
+    if (!(await this.narrate(g.report, id))) return;
+    this.afterDeaths("voted", id);
   },
 
   // ---- views ----
   view() {
-    const g = S.ww.game;
+    let g = S.ww.game;
+    if (g && g.v !== WW_GAME_VERSION) { S.ww.game = g = null; save(); } // a game saved by an older version
     if (!g) return this.vSetup();
     return this["v_" + g.phase]();
   },
@@ -1511,12 +1699,18 @@ const WW = {
     return `${gameHeader("WEREWOLF", sub)}
       <div class="ww-bar"><button class="link" data-act="wwMute" aria-pressed="${!S.ww.muted}">${S.ww.muted ? "Sound off" : "Sound on"}</button></div>`;
   },
+  roleChip(k, n) {
+    const C = S.ww, on = this.on(C), R = WW_ROLE[k];
+    const can = n >= 5 && (on[k] || this.valid(n, Object.assign({}, C, { on: Object.assign({}, on, { [k]: true }) })));
+    return `<button class="rchip" data-act="wwToggleRole" data-k="${k}" aria-pressed="${!!on[k]}" ${can ? "" : "disabled"}>
+      <b>${R.name}</b><span>${R.short}</span></button>`;
+  },
   vSetup() {
     const C = S.ww, n = S.players.length;
-    if (C.wolves == null || (n >= 5 && !this.valid(n, C))) this.autoWolves();
-    const vills = n - C.wolves - this.specials(C);
+    if (C.wolves == null) this.autoWolves();
+    else if (n >= 5 && !this.valid(n, C)) this.fit(C, n);
+    const villagers = n - C.wolves - this.count(C);
     const canW = w => n >= 5 && this.valid(n, Object.assign({}, C, { wolves: w }));
-    const tog = k => n >= 5 && (C[k] || this.valid(n, Object.assign({}, C, { [k]: true })));
     const tts = "speechSynthesis" in window;
     const noId = tts && C.voice === "id" && !Voice.hasLang("id");
     return `
@@ -1525,15 +1719,20 @@ const WW = {
     ${n < 5 ? `<p class="err">Werewolf needs at least 5 players.</p>` : ""}
     <section class="section">
       <h2 class="title">Roles</h2>
+      <div class="seg" role="group" aria-label="Role presets">
+        <button data-act="wwPreset" data-v="classic" ${n < 5 ? "disabled" : ""}>Classic</button>
+        <button data-act="wwPreset" data-v="recommended" ${n < 5 ? "disabled" : ""}>Recommended</button>
+        <button data-act="wwPreset" data-v="chaos" ${n < 5 ? "disabled" : ""}>Chaos</button>
+      </div>
       <div class="roles two-up">
         <div class="role"><span class="n c-uc">${C.wolves}</span><span class="lbl">Werewolves</span>
           <div class="step"><button data-act="wwStep" data-k="wolves" data-d="-1" aria-label="Fewer werewolves" ${canW(C.wolves - 1) ? "" : "disabled"}>&minus;</button><button data-act="wwStep" data-k="wolves" data-d="1" aria-label="More werewolves" ${canW(C.wolves + 1) ? "" : "disabled"}>+</button></div></div>
-        <div class="role"><span class="n c-civ">${Math.max(0, vills)}</span><span class="lbl">Villagers</span><span class="hint" style="font-size:.75rem">the rest</span></div>
+        <div class="role"><span class="n c-civ">${Math.max(0, villagers)}</span><span class="lbl">Plain villagers</span><span class="hint" style="font-size:.75rem">fill the rest</span></div>
       </div>
-      <div class="toggles" role="group" aria-label="Special roles">
-        ${["seer", "doc", "hunter"].map(k => `<button class="toggle" data-act="wwToggle" data-k="${k}" aria-pressed="${!!C[k]}" ${tog(k) ? "" : "disabled"}>${WW_ROLE[k].name}</button>`).join("")}
-      </div>
-      <p class="hint">Seer checks one player a night, Doctor protects one, Hunter shoots someone on the way out.</p>
+      <div class="rgroup"><span class="eyebrow">Village</span><div class="rgrid">${WW_VILLAGE_ROLES.map(k => this.roleChip(k, n)).join("")}</div></div>
+      <div class="rgroup"><span class="eyebrow">Werewolf team</span><div class="rgrid">${WW_WOLF_ROLES.map(k => this.roleChip(k, n)).join("")}</div></div>
+      <div class="rgroup"><span class="eyebrow">On nobody's side</span><div class="rgrid">${WW_NEUTRAL_ROLES.map(k => this.roleChip(k, n)).join("")}</div></div>
+      <p class="hint">Greyed-out roles don't fit at this table size. Remove a role or add players to make room.</p>
     </section>
     <section class="section">
       <h2 class="title">Narrator</h2>
@@ -1567,12 +1766,16 @@ const WW = {
       <ol>
         <li><b>Deal.</b> Pass the phone around so everyone sees their secret role. Werewolves also see who the other wolves are.</li>
         <li><b>Night.</b> Put the phone in the middle and tap Start. Everyone closes their eyes. The narrator calls each role in turn: they open their eyes, quietly tap their choice, put the phone back in the middle and close their eyes. The phone makes no sound while it's out of the middle, so nobody can hear where it went.</li>
-        <li><b>Morning.</b> Everyone wakes up and the narrator announces who the werewolves killed, unless the Doctor saved them.</li>
-        <li><b>Day.</b> Argue about who the wolves are. Then everyone points at once, and you tap whoever got the most votes. They're out.</li>
-        <li><b>Winning.</b> The village wins when every werewolf is dead. The werewolves win once they equal or outnumber everyone else.</li>
+        <li><b>Morning.</b> Everyone wakes up and the narrator announces who died in the night.</li>
+        <li><b>Day.</b> Argue about who the wolves are. Then everyone points at once, and you tap whoever got the most votes. The Mayor's finger counts twice.</li>
+        <li><b>Winning.</b> The village wins when every werewolf is dead. The werewolves win once they equal or outnumber everyone else. The Jester wins by getting voted out, and lovers from opposite sides win if they're the last two standing.</li>
         <li><b>Dead players</b> stay quiet for the rest of the game. No hints from beyond the grave.</li>
       </ol>
-      <ul><li>Points: werewolves 3 each when they win, everyone on the village side 2 each when the village wins.</li></ul>
+      <ul><li>Points: werewolf team 3 each, village 2 each, Jester 5, winning lovers 4 each.</li></ul>
+    </details>
+    <details>
+      <summary>All ${Object.keys(WW_ROLE).length} roles</summary>
+      <ul class="rguide">${Object.keys(WW_ROLE).map(k => `<li><b>${WW_ROLE[k].name}</b> <span class="pill ${this.pill(k)}">${WW_ROLE[k].team === "wolf" ? "Wolf team" : WW_ROLE[k].team === "neutral" ? "Solo" : "Village"}</span><br>${WW_ROLE[k].desc}</li>`).join("")}</ul>
     </details>`;
   },
   v_reveal() {
@@ -1595,10 +1798,86 @@ const WW = {
     ${this.graveyard()}
     ${quitLink()}`;
   },
+  pickList(list, max, verb) {
+    const g = S.ww.game;
+    return `<div class="vote" role="group" aria-label="Choose ${max > 1 ? max + " players" : "a player"}">
+      ${list.map(i => `<button data-act="wwPick" data-i="${i}" data-max="${max}" data-mark="${verb}" aria-pressed="${ui.sels.includes(i)}">${esc(g.roles[i].name)}</button>`).join("")}
+    </div>`;
+  },
+  names(idx) { return idx.map(i => esc(S.ww.game.roles[i].name)).join(" &amp; "); },
+  nightBody(step) {
+    const g = S.ww.game, all = this.aliveIdx(g);
+    if (step === "lovers") {
+      return `<div class="dossier flip"><span class="eyebrow">Bound by Cupid</span>
+        <span class="who">${this.names(g.lovers || [])}</span>
+        <p class="note">If one of you dies, so does the other.</p></div>`;
+    }
+    if (!this.stepActive(g, step)) {
+      return `<p class="hint center">&hellip;</p><button class="link" data-act="wwEndStep" style="align-self:center">Continue</button>`;
+    }
+    if (step === "cupid") {
+      return `${this.pickList(all, 2, "Love")}
+        <button class="btn btn-main" data-act="wwChoose" ${ui.sels.length === 2 ? "" : "disabled"}>${ui.sels.length === 2 ? `Make ${this.names(ui.sels)} fall in love` : "Choose two players"}</button>`;
+    }
+    if (step === "wolves") {
+      const list = all.filter(i => !this.isWolf(g.roles[i].role)), need = Math.min(g.kills, list.length);
+      return `${g.kills > 1 ? `<p class="hint center" style="text-align:center"><b>Two victims tonight.</b></p>` : ""}
+        ${this.pickList(list, need, "Kill")}
+        <button class="btn btn-danger" data-act="wwChoose" ${ui.sels.length === need ? "" : "disabled"}>${ui.sels.length === need ? `Kill ${this.names(ui.sels)}` : need > 1 ? "Choose two players" : "Choose a player"}</button>`;
+    }
+    if (step === "witch") return this.witchBody();
+    if (step === "seer" || step === "appr") {
+      if (step === "appr" && this.alive(g, "seer")) {
+        return `<p class="hint center" style="text-align:center">The Seer is still alive. Keep watching and learning.</p>
+          <button class="btn btn-main" data-act="wwEndStep">Close my eyes</button>`;
+      }
+      if (ui.seerResult != null) {
+        const r = g.roles[ui.seerResult], bad = this.looksWolf(r.role);
+        return `<div class="dossier flip"><span class="who">${esc(r.name)}</span>
+            <span class="stamp ${bad ? "spy" : "civ"}">${bad ? "WEREWOLF" : "NOT A WEREWOLF"}</span></div>
+          <button class="btn btn-main" data-act="wwEndStep">Done, close my eyes</button>`;
+      }
+      const list = all.filter(i => g.roles[i].role !== step);
+      return `${this.pickList(list, 1, "Check")}
+        <button class="btn btn-main" data-act="wwChoose" ${ui.sels.length ? "" : "disabled"}>${ui.sels.length ? `Check ${this.names(ui.sels)}` : "Choose a player"}</button>`;
+    }
+    if (step === "doc") {
+      const list = all.filter(i => i !== g.lastSaved);
+      return `${this.pickList(list, 1, "Protect")}
+        ${g.lastSaved != null && g.roles[g.lastSaved].alive ? `<p class="hint">${esc(g.roles[g.lastSaved].name)} was protected last night, so not tonight.</p>` : ""}
+        <button class="btn btn-main" data-act="wwChoose" ${ui.sels.length ? "" : "disabled"}>${ui.sels.length ? `Protect ${this.names(ui.sels)}` : "Choose a player"}</button>`;
+    }
+    return "";
+  },
+  witchBody() {
+    const g = S.ww.game, me = g.roles.findIndex(r => r.role === "witch");
+    if (ui.wstage === "poison") {
+      return `<p class="hint">Who drinks the poison?</p>
+        ${this.pickList(this.aliveIdx(g).filter(i => i !== me), 1, "Poison")}
+        <div class="btn-row">
+          <button class="btn btn-ghost" data-act="wwPoisonBack">Back</button>
+          <button class="btn btn-danger" data-act="wwPoisonSet" ${ui.sels.length ? "" : "disabled"}>${ui.sels.length ? `Poison ${this.names(ui.sels)}` : "Choose"}</button>
+        </div>`;
+    }
+    const attacked = g.targets;
+    return `<div class="panel"><span class="eyebrow">Attacked tonight</span>
+        <b style="font-size:1.2rem">${attacked.length ? this.names(attacked) : "Nobody"}</b></div>
+      <section class="section">
+        <span class="eyebrow">Healing potion</span>
+        ${g.healUsed ? `<p class="hint">Used up.</p>` : attacked.length
+          ? `<div class="toggles">${attacked.map(i => `<button class="toggle" data-act="wwHeal" data-i="${i}" aria-pressed="${ui.wheal === i}">Save ${esc(g.roles[i].name)}</button>`).join("")}</div>`
+          : `<p class="hint">Nobody to save tonight. Keep it for later.</p>`}
+      </section>
+      <section class="section">
+        <span class="eyebrow">Poison</span>
+        ${g.poisonUsed ? `<p class="hint">Used up.</p>` : ui.wpoison != null
+          ? `<p>Poisoning <b>${esc(g.roles[ui.wpoison].name)}</b> <button class="link" data-act="wwPoisonClear">Undo</button></p>`
+          : `<button class="btn btn-ghost" data-act="wwPoisonMode">Poison someone&hellip;</button>`}
+      </section>
+      <button class="btn btn-main" data-act="wwWitchDone">${ui.wheal != null || ui.wpoison != null ? "Use potions and close my eyes" : "Do nothing tonight"}</button>`;
+  },
   v_night() {
     const g = S.ww.game, step = g.steps[g.si];
-    const titles = { wolves: "Werewolves", seer: "Seer", doc: "Doctor" };
-    let body = "";
     if (ui.returning) {
       return `${this.header(`Night ${g.night}`)}
       <section class="section center" style="padding-top:18vh">
@@ -1607,63 +1886,46 @@ const WW = {
         <div class="timer paused" id="ww-count" aria-live="off">${Math.ceil(WW_RETURN_MS / 1000)}</div>
       </section>`;
     }
-    if (!ui.busy && step) {
-      const who = { wolves: "wolf", seer: "seer", doc: "doc" }[step];
-      if (!this.alive(g, who)) {
-        body = `<p class="hint center">&hellip;</p><button class="link" data-act="wwEndStep" style="align-self:center">Continue</button>`;
-      } else if (step === "seer" && ui.seerResult != null) {
-        const r = g.roles[ui.seerResult], bad = r.role === "wolf";
-        body = `<div class="dossier flip">
-            <span class="who">${esc(r.name)}</span>
-            <span class="stamp ${bad ? "spy" : "civ"}">${bad ? "WEREWOLF" : "NOT A WEREWOLF"}</span>
-          </div>
-          <button class="btn btn-main" data-act="wwEndStep">Done, close my eyes</button>`;
-      } else {
-        const list = this.aliveIdx(g).filter(i =>
-          step === "wolves" ? g.roles[i].role !== "wolf" :
-          step === "seer" ? g.roles[i].role !== "seer" :
-          i !== g.lastSaved);
-        const verb = { wolves: "Kill", seer: "Check", doc: "Protect" }[step];
-        body = `<div class="vote" role="group" aria-label="Choose a player">
-            ${list.map(i => `<button data-act="pick" data-i="${i}" data-mark="${verb}" aria-pressed="${ui.sel === i}">${esc(g.roles[i].name)}</button>`).join("")}
-          </div>
-          ${step === "doc" && g.lastSaved != null && g.roles[g.lastSaved].alive ? `<p class="hint">${esc(g.roles[g.lastSaved].name)} was protected last night, so not tonight.</p>` : ""}
-          <p class="hint center" style="text-align:center">The phone stays silent while you choose.</p>
-          <button class="btn ${step === "wolves" ? "btn-danger" : "btn-main"}" data-act="wwChoose" ${ui.sel == null ? "disabled" : ""}>${ui.sel == null ? "Choose a player" : `${verb} ${esc(g.roles[ui.sel].name)}`}</button>`;
-      }
-    }
+    const body = !ui.busy && step ? this.nightBody(step) : "";
+    const silent = !ui.busy && step && step !== "lovers" && this.stepActive(g, step);
     return `${this.header(`Night ${g.night}`)}
     <div class="moon small" aria-hidden="true"></div>
     <section class="section center">
-      <p class="eyebrow">${step ? titles[step] : "Night falls"}</p>
+      <p class="eyebrow">${step ? WW_STEP_TITLE[step] : "Night falls"}</p>
       <p class="ww-line" id="ww-line">${esc(ui.line || "")}</p>
+      ${silent ? `<p class="hint">The phone stays silent while you choose.</p>` : ""}
     </section>
     ${body}`;
   },
+  deathCards(ds) {
+    const g = S.ww.game;
+    return `<div class="deaths">${ds.map(d => {
+      const r = g.roles[d.i];
+      const showRole = S.ww.reveal || r.role === "hunter";
+      return `<div class="dossier flip"><span class="eyebrow">${WW_CAUSE[d.cause]}</span>
+        <span class="who">${esc(r.name)}</span>
+        ${showRole ? `<span class="stamp ${this.stampClass(r.role)}">${WW_ROLE[r.role].name.toUpperCase()}</span>` : ""}</div>`;
+    }).join("")}</div>`;
+  },
   v_dawn() {
-    const g = S.ww.game, d = g.report[0];
+    const g = S.ww.game;
     return `${this.header(`Day ${g.night}`)}
     <div class="sun" aria-hidden="true"></div>
-    ${d != null ? `<div class="dossier flip">
-        <span class="eyebrow">Found at dawn</span>
-        <span class="who">${esc(g.roles[d].name)}</span>
-        ${S.ww.reveal ? `<span class="note">was ${g.roles[d].role === "wolf" || g.roles[d].role === "vill" ? "a" : "the"}</span><span class="stamp ${g.roles[d].role === "wolf" ? "spy" : "civ"}">${WW_ROLE[g.roles[d].role].name.toUpperCase()}</span>` : `<span class="note">was killed in the night.</span>`}
-      </div>` : `<div class="banner" style="color:var(--civ)">Nobody died</div><p class="hint center" style="text-align:center">The Doctor must have been busy.</p>`}
-    ${this.shotNote()}
+    ${g.report.length ? this.deathCards(g.report)
+      : `<div class="banner" style="color:var(--civ)">Nobody died</div><p class="hint center" style="text-align:center">Someone was looking out for the village.</p>`}
     <button class="btn btn-main" data-act="wwToDay" ${ui.busy ? "disabled" : ""}>${ui.busy ? "Listen to the narrator&hellip;" : "Start the discussion"}</button>
     ${this.graveyard()}`;
   },
   v_hunter() {
     const g = S.ww.game, h = g.roles[g.hunter];
-    const list = this.aliveIdx(g);
     return `${this.header("The Hunter's last shot")}
     <div class="dossier flip">
       <span class="who">${esc(h.name)}</span>
       <span class="stamp civ">HUNTER</span>
       <p class="note">Take one player down with you. Choose fast.</p>
     </div>
-    <div class="vote">${list.map(i => `<button data-act="pick" data-i="${i}" data-mark="Shoot" aria-pressed="${ui.sel === i}">${esc(g.roles[i].name)}</button>`).join("")}</div>
-    <button class="btn btn-danger" data-act="wwShoot" ${ui.sel == null || ui.busy ? "disabled" : ""}>${ui.sel == null ? "Choose a player" : `Shoot ${esc(g.roles[ui.sel].name)}`}</button>`;
+    ${this.pickList(this.aliveIdx(g), 1, "Shoot")}
+    <button class="btn btn-danger" data-act="wwShoot" ${!ui.sels.length || ui.busy ? "disabled" : ""}>${ui.sels.length ? `Shoot ${this.names(ui.sels)}` : "Choose a player"}</button>`;
   },
   v_day() {
     const g = S.ww.game, ms = SF.left(g);
@@ -1688,31 +1950,33 @@ const WW = {
     <section class="section">
       <p class="eyebrow">Day ${g.night} &middot; Vote</p>
       <h2 class="title">${g.timeUp ? "Time's up. Vote!" : "Who's out?"}</h2>
-      <p class="hint">On three, everyone points. Tap whoever got the most votes, or skip if there's a tie nobody will break.</p>
+      <p class="hint">On three, everyone points. The Mayor counts twice if they've revealed themselves. Tap whoever got the most votes, or skip if there's a tie nobody will break.</p>
     </section>
-    <div class="vote" role="group" aria-label="Players still alive">
-      ${this.aliveIdx(g).map(i => `<button data-act="pick" data-i="${i}" data-mark="Out?" aria-pressed="${ui.sel === i}">${esc(g.roles[i].name)}</button>`).join("")}
-    </div>
-    <button class="btn btn-danger" data-act="wwVote" ${ui.sel == null ? "disabled" : ""}>${ui.sel == null ? "Pick a player" : `Vote out ${esc(g.roles[ui.sel].name)}`}</button>
+    ${this.pickList(this.aliveIdx(g), 1, "Out?")}
+    <button class="btn btn-danger" data-act="wwVote" ${ui.sels.length ? "" : "disabled"}>${ui.sels.length ? `Vote out ${this.names(ui.sels)}` : "Pick a player"}</button>
     <button class="btn btn-ghost" data-act="wwSkipVote">No one goes today</button>`;
   },
   v_voted() {
     const g = S.ww.game, i = g.votedOut;
+    let body;
+    if (i == null) body = `<div class="banner">No one goes</div>`;
+    else if (g.princeSaved) body = `<div class="dossier flip"><span class="eyebrow">Voted out, but&hellip;</span>
+        <span class="who">${esc(g.roles[i].name)}</span><span class="stamp civ">PRINCE</span>
+        <p class="note">Royalty can't be exiled. They stay in the game.</p></div>`;
+    else body = this.deathCards(g.report);
     return `${this.header(`Day ${g.night}`)}
-    ${i != null ? `<div class="dossier flip" style="margin-top:12px">
-        <span class="eyebrow">Voted out</span>
-        <span class="who">${esc(g.roles[i].name)}</span>
-        ${S.ww.reveal ? `<span class="note">was ${g.roles[i].role === "wolf" || g.roles[i].role === "vill" ? "a" : "the"}</span><span class="stamp ${g.roles[i].role === "wolf" ? "spy" : "civ"}">${WW_ROLE[g.roles[i].role].name.toUpperCase()}</span>` : `<span class="note">leaves the village.</span>`}
-      </div>` : `<div class="banner">No one goes</div>`}
-    ${this.shotNote()}
+    ${body}
     <button class="btn btn-main" data-act="wwNextNight" ${ui.busy ? "disabled" : ""}>${ui.busy ? "Listen to the narrator&hellip;" : `Night ${g.night + 1} falls`}</button>`;
   },
   v_over() {
     const g = S.ww.game;
+    const banner = { village: "Village wins", wolves: "Werewolves win", jester: "Jester wins", lovers: "Lovers win" }[g.winner];
+    const color = { village: "var(--civ)", wolves: "var(--spy)", jester: "var(--ghost)", lovers: "#ff8fb1" }[g.winner];
     return `${this.header("Game over")}
-    <div class="banner" style="${g.winner === "wolves" ? "color:var(--spy)" : "color:var(--civ)"}">${g.winner === "wolves" ? "Werewolves win" : "Village wins"}</div>
+    <div class="banner" style="color:${color}">${banner}</div>
+    ${g.lovers ? `<p class="hint center" style="text-align:center">Lovers: ${this.names(g.lovers)}</p>` : ""}
     <section class="section"><span class="eyebrow">Who was who</span>
-      <ol class="order">${g.roles.map(r => `<li>${r.alive ? esc(r.name) : `<s>${esc(r.name)}</s>`}<span class="pill ${WW_ROLE[r.role].pill}">${WW_ROLE[r.role].name}</span></li>`).join("")}</ol>
+      <ol class="order">${g.roles.map(r => `<li>${r.alive ? esc(r.name) : `<s>${esc(r.name)}</s>`}<span class="pill ${this.pill(r.role)}">${WW_ROLE[r.role].name}</span></li>`).join("")}</ol>
     </section>
     <section class="section"><span class="eyebrow">Werewolf scores</span>${scoreTable("ww", g.awards)}</section>
     <div class="btn-row">
@@ -1720,17 +1984,11 @@ const WW = {
       <button class="btn btn-main" data-act="wwAgain">Play again</button>
     </div>`;
   },
-  shotNote() {
-    const g = S.ww.game;
-    if (!g.shot) return "";
-    const t = g.roles[g.shot.t];
-    return `<p class="out-chip" style="align-self:center">The Hunter shot <b style="color:var(--fg)">&nbsp;${esc(t.name)}</b>${S.ww.reveal ? `<span class="pill ${WW_ROLE[t.role].pill}">${WW_ROLE[t.role].name}</span>` : ""}</p>`;
-  },
   graveyard() {
     const g = S.ww.game, dead = g.roles.filter(r => !r.alive);
     if (!dead.length) return "";
     return `<section class="section"><span class="eyebrow">Graveyard</span>
-      <div class="out-list">${dead.map(r => `<span class="out-chip"><s>${esc(r.name)}</s>${S.ww.reveal ? `<span class="pill ${WW_ROLE[r.role].pill}">${WW_ROLE[r.role].name}</span>` : ""}</span>`).join("")}</div>
+      <div class="out-list">${dead.map(r => `<span class="out-chip"><s>${esc(r.name)}</s>${S.ww.reveal || r.role === "hunter" ? `<span class="pill ${this.pill(r.role)}">${WW_ROLE[r.role].name}</span>` : ""}</span>`).join("")}</div>
     </section>`;
   },
 
@@ -1739,6 +1997,8 @@ const WW = {
     switch (a) {
       case "wwStep": C[d.k] += +d.d; break;
       case "wwToggle": C[d.k] = !C[d.k]; break;
+      case "wwToggleRole": { const on = this.on(C); on[d.k] = !on[d.k]; break; }
+      case "wwPreset": this.preset(d.v); break;
       case "wwVoice": C.voice = d.v; break;
       case "wwSfx": C.sfx = d.v === "1"; break;
       case "wwMute":
@@ -1753,24 +2013,41 @@ const WW = {
       case "wwStart": primeAudio(); Voice.unlock(); this.start(); return "done";
       case "wwNightIntro": g.phase = "nightIntro"; top(); break;
       case "wwStartNight": this.startNight(); return "done";
+      case "wwPick": {
+        const i = +d.i, max = +d.max || 1, k = ui.sels.indexOf(i);
+        if (k >= 0) ui.sels.splice(k, 1);
+        else { ui.sels.push(i); if (ui.sels.length > max) ui.sels.shift(); }
+        break;
+      }
       case "wwChoose": {
-        const step = g.steps[g.si], i = ui.sel;
-        if (i == null) return "done";
-        if (step === "wolves") { g.victim = i; save(); this.endStep(wwSeq); }
-        else if (step === "doc") { g.saved = i; g.lastSaved = i; save(); this.endStep(wwSeq); }
-        else if (step === "seer") { g.seerSaw = i; ui.seerResult = i; save(); render(); }
+        const step = g.steps[g.si], s = ui.sels.slice();
+        if (!s.length) return "done";
+        if (step === "cupid") { if (s.length !== 2) return "done"; g.lovers = s; save(); this.endStep(wwSeq); }
+        else if (step === "wolves") { g.targets = s; save(); this.endStep(wwSeq); }
+        else if (step === "doc") { g.saved = s[0]; g.lastSaved = s[0]; save(); this.endStep(wwSeq); }
+        else if (step === "seer" || step === "appr") { ui.seerResult = s[0]; save(); render(); }
         return "done";
       }
+      case "wwHeal": ui.wheal = ui.wheal === +d.i ? null : +d.i; break;
+      case "wwPoisonMode": ui.wstage = "poison"; ui.sels = []; break;
+      case "wwPoisonSet": if (ui.sels.length) ui.wpoison = ui.sels[0]; ui.wstage = null; ui.sels = []; break;
+      case "wwPoisonBack": ui.wstage = null; ui.sels = []; break;
+      case "wwPoisonClear": ui.wpoison = null; break;
+      case "wwWitchDone":
+        if (ui.wheal != null) { g.heal = ui.wheal; g.healUsed = true; }
+        if (ui.wpoison != null) { g.poison = ui.wpoison; g.poisonUsed = true; }
+        save(); this.endStep(wwSeq);
+        return "done";
       case "wwEndStep":
         if (g.steps[g.si] === "doc" && !this.alive(g, "doc")) g.lastSaved = null;
         this.endStep(++wwSeq); return "done";
-      case "wwShoot": if (ui.sel != null) this.hunterShoots(ui.sel); return "done";
+      case "wwShoot": if (ui.sels.length) this.hunterShoots(ui.sels[0]); return "done";
       case "wwToDay": this.stop(); Voice.unlock(); if (!this.settle()) this.toDay(); return "done";
       case "wwPause": primeAudio(); g.running ? SF.pause(g) : SF.resume(g); break;
-      case "wwToVote": SF.pause(g); Voice.hush(); g.phase = "vote"; ui.sel = null; top(); break;
-      case "wwVote": if (ui.sel != null) this.vote(ui.sel); return "done";
+      case "wwToVote": SF.pause(g); Voice.hush(); g.phase = "vote"; ui.sels = []; top(); break;
+      case "wwVote": if (ui.sels.length) this.vote(ui.sels[0]); return "done";
       case "wwSkipVote": this.vote(null); return "done";
-      case "wwNextNight": this.stop(); if (this.settle()) return "done"; g.night++; g.phase = "nightIntro"; ui.sel = null; top(); break;
+      case "wwNextNight": this.stop(); if (this.settle()) return "done"; g.night++; g.phase = "nightIntro"; ui.sels = []; top(); break;
       case "wwAgain": this.stop(); C.game = null; this.start(); return "done";
       default: return false;
     }
